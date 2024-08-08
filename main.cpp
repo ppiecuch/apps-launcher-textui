@@ -517,40 +517,27 @@ static uint32_t curr_font_w_bytes;
 static uint32_t curr_font_bytes_per_glyph;
 static uint8_t *curr_font_data;
 
-void tfb_draw_string(int x, int y, uint32_t fg_color, uint32_t bg_color, const char *s)
+#define draw_char_partial(b)                                                \
+   do {                                                                     \
+      fb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]);    \
+      fb_draw_pixel(x + (b << 3) + 6, row, arr[!(data[b] & (1 << 1))]);    \
+      fb_draw_pixel(x + (b << 3) + 5, row, arr[!(data[b] & (1 << 2))]);    \
+      fb_draw_pixel(x + (b << 3) + 4, row, arr[!(data[b] & (1 << 3))]);    \
+      fb_draw_pixel(x + (b << 3) + 3, row, arr[!(data[b] & (1 << 4))]);    \
+      fb_draw_pixel(x + (b << 3) + 2, row, arr[!(data[b] & (1 << 5))]);    \
+      fb_draw_pixel(x + (b << 3) + 1, row, arr[!(data[b] & (1 << 6))]);    \
+      fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]);    \
+   } while (0)
+
+void fb_draw_char(int x, int y, uint32_t fg_color, uint32_t bg_color, uint8_t c)
 {
    if (!curr_font) {
       fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
       return;
    }
 
-   for (; *s; s++, x += curr_font_w) {
-      fb_draw_char(x, y, fg_color, bg_color, *s);
-   }
-}
-
-
-#define draw_char_partial(b)                                                \
-   do {                                                                     \
-      tfb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]);    \
-      tfb_draw_pixel(x + (b << 3) + 6, row, arr[!(data[b] & (1 << 1))]);    \
-      tfb_draw_pixel(x + (b << 3) + 5, row, arr[!(data[b] & (1 << 2))]);    \
-      tfb_draw_pixel(x + (b << 3) + 4, row, arr[!(data[b] & (1 << 3))]);    \
-      tfb_draw_pixel(x + (b << 3) + 3, row, arr[!(data[b] & (1 << 4))]);    \
-      tfb_draw_pixel(x + (b << 3) + 2, row, arr[!(data[b] & (1 << 5))]);    \
-      tfb_draw_pixel(x + (b << 3) + 1, row, arr[!(data[b] & (1 << 6))]);    \
-      tfb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]);    \
-   } while (0)
-
-void tfb_draw_char(int x, int y, u32 fg_color, u32 bg_color, u8 c)
-{
-   if (!curr_font) {
-      fprintf(stderr, "[tfblib] ERROR: no font currently selected\n");
-      return;
-   }
-
-   u8 *data = curr_font_data + curr_font_bytes_per_glyph * c;
-   const u32 arr[] = { fg_color, bg_color };
+   uint8_t *data = curr_font_data + curr_font_bytes_per_glyph * c;
+   const uint32_t arr[] = { fg_color, bg_color };
 
    /*
     * NOTE: the following algorithm is certainly not the fastest way to draw
@@ -568,38 +555,31 @@ void tfb_draw_char(int x, int y, u32 fg_color, u32 bg_color, u8 c)
     *     https://github.com/vvaltchev/tilck
     */
 
-   if (curr_font_w_bytes == 1)
-
-      for (u32 row = y; row < (y + curr_font_h); row++) {
+   if (curr_font_w_bytes == 1) {
+      for (uint32_t row = y; row < (y + curr_font_h); row++) {
          draw_char_partial(0);
          data += curr_font_w_bytes;
       }
-
-   else if (curr_font_w_bytes == 2)
-
-      for (u32 row = y; row < (y + curr_font_h); row++) {
+   } else if (curr_font_w_bytes == 2) {
+      for (uint32_t row = y; row < (y + curr_font_h); row++) {
          draw_char_partial(0);
          draw_char_partial(1);
          data += curr_font_w_bytes;
       }
-
-   else
-
-      for (u32 row = y; row < (y + curr_font_h); row++) {
-
-         for (u32 b = 0; b < curr_font_w_bytes; b++) {
+   } else {
+      for (uint32_t row = y; row < (y + curr_font_h); row++) {
+         for (uint32_t b = 0; b < curr_font_w_bytes; b++) {
             draw_char_partial(b);
          }
-
          data += curr_font_w_bytes;
       }
+   }
 }
 
-void tfb_draw_char_scaled(int x, int y,
-                          u32 fg, u32 bg, int xscale, int yscale, u8 c)
+void fb_draw_char_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, int yscale, uint8_t c)
 {
    if (!curr_font) {
-      fprintf(stderr, "[tfblib] ERROR: no font currently selected\n");
+      fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
       return;
    }
 
@@ -609,7 +589,7 @@ void tfb_draw_char_scaled(int x, int y,
    if (yscale < 0)
       y += -yscale * curr_font_h;
 
-   u8 *d = curr_font_data + curr_font_bytes_per_glyph * c;
+   uint8_t *d = curr_font_data + curr_font_bytes_per_glyph * c;
 
    /*
     * NOTE: this algorithm is clearly much slower than the simpler variant
@@ -618,16 +598,40 @@ void tfb_draw_char_scaled(int x, int y,
     * a scaled font instead of the *_scaled draw text functions.
     */
 
-   for (u32 row = 0; row < curr_font_h; row++, d += curr_font_w_bytes)
-      for (u32 b = 0; b < curr_font_w_bytes; b++)
-         for (u32 bit = 0; bit < 8; bit++) {
-
+   for (uint32_t row = 0; row < curr_font_h; row++, d += curr_font_w_bytes)
+      for (uint32_t b = 0; b < curr_font_w_bytes; b++)
+         for (uint32_t bit = 0; bit < 8; bit++) {
             const int xoff = xscale * ((b << 3) + 8 - bit - 1);
             const int yoff = yscale * row;
-            const u32 color = (d[b] & (1 << bit)) ? fg : bg;
-
-            tfb_fill_rect(x + xoff, y + yoff, xscale, yscale, color);
+            const uint32_t color = (d[b] & (1 << bit)) ? fg : bg;
+            fb_fill_rect(x + xoff, y + yoff, xscale, yscale, color);
          }
+}
+
+void fb_draw_string(int x, int y, uint32_t fg_color, uint32_t bg_color, const char *s)
+{
+   if (!curr_font) {
+      fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
+      return;
+   }
+
+   for (; *s; s++, x += curr_font_w) {
+      fb_draw_char(x, y, fg_color, bg_color, *s);
+   }
+}
+
+void tfb_draw_string_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, int yscale, const char *s)
+{
+   if (!curr_font) {
+      fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
+      return;
+   }
+
+   const int xs = xscale > 0 ? xscale : -xscale;
+
+   for (; *s; s++, x += xs * curr_font_w) {
+      fb_draw_char_scaled(x, y, fg, bg, xscale, yscale, *s);
+   }
 }
 
 /// MAIN RUN
