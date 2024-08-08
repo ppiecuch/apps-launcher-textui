@@ -1,6 +1,9 @@
+#include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <linux/fb.h>
@@ -27,7 +30,7 @@
       _x > _y ? _x : _y; })
 
 struct fb_var_screeninfo __fbi;
-int __tfb_ttyfd = -1;
+int __fb_ttyfd = -1;
 
 static int fbfd = -1;
 
@@ -39,6 +42,29 @@ extern int __fb_screen_h;
 extern size_t __fb_size;
 extern size_t __fb_pitch;
 extern size_t __fb_pitch_div4; /* see the comment in drawing.c */
+
+enum {
+/**
+    * Do NOT put TTY in graphics mode.
+    *
+    * Passing this flag to tfb_acquire_fb() will
+    * allow to use the framebuffer and to see stdout on TTY as well. That usually
+    * is undesirable because the text written to TTY will overwrite the graphics.
+    */
+    FB_FL_NO_TTY_KD_GRAPHICS = (1 << 0),
+
+    /**
+    * Do NOT write directly onto the framebuffer.
+    *
+    * Passing this flag to tfb_acquire_fb() will make it allocate a regular memory
+    * buffer where all the writes (while drawing) will be directed to. The changes
+    * will appear on-screen only after manually called tfb_flush_rect() or
+    * tfb_flush_rect(). This flag is useful for applications needing to clean and
+    * redraw the whole screen (or part of it) very often (e.g. games) in order to
+    * avoid the annoying flicker effect.
+    */
+    FB_FL_USE_DOUBLE_BUFFER = (1 << 1),
+};
 
 /* Window-related variables */
 extern int __fb_win_w;
@@ -98,7 +124,6 @@ inline static uint32_t fb_make_color(uint8_t r, uint8_t g, uint8_t b)
 }
 
 /* Error codes */
-
 
 enum {
     FB_SUCCESS = 0, // The call completed successfully without any errors.
