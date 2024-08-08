@@ -54,13 +54,13 @@ int __fb_ttyfd = -1;
 static int fbfd = -1;
 
 /* Essential variables */
-extern void *__fb_buffer;
-extern void *__fb_real_buffer;
-extern int __fb_screen_w;
-extern int __fb_screen_h;
-extern size_t __fb_size;
-extern size_t __fb_pitch;
-extern size_t __fb_pitch_div4; /* see the comment in drawing.c */
+void *__fb_buffer;
+void *__fb_real_buffer;
+int __fb_screen_w;
+int __fb_screen_h;
+size_t __fb_size;
+size_t __fb_pitch;
+size_t __fb_pitch_div4; /* see the comment in drawing.c */
 
 enum {
 /**
@@ -86,12 +86,12 @@ enum {
 };
 
 /* Window-related variables */
-extern int __fb_win_w;
-extern int __fb_win_h;
-extern int __fb_off_x;
-extern int __fb_off_y;
-extern int __fb_win_end_x;
-extern int __fb_win_end_y;
+int __fb_win_w;
+int __fb_win_h;
+int __fb_off_x;
+int __fb_off_y;
+int __fb_win_end_x;
+int __fb_win_end_y;
 
 /* Color-related variables */
 uint32_t __fb_r_mask;
