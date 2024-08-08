@@ -412,7 +412,7 @@ int fb_set_current_font(fb_font_t font_id)
       curr_font_w = 8;
       curr_font_h = h1->bytes_per_glyph;
       curr_font_w_bytes = 1;
-      curr_font_data = curr_font + sizeof(struct psf1_header);
+      curr_font_data = ((uint8_t *))curr_font + sizeof(struct psf1_header);
       curr_font_bytes_per_glyph = h1->bytes_per_glyph;
    } else {
       return FB_ERR_INVALID_FONT_ID;
