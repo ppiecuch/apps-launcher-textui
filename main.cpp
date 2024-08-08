@@ -405,7 +405,7 @@ int fb_set_current_font(fb_font_t font_id)
       curr_font_w = h2->width;
       curr_font_h = h2->height;
       curr_font_w_bytes = h2->bytes_per_glyph / h2->height;
-      curr_font_data = curr_font + h2->header_size;
+      curr_font_data = (uint8_t *)curr_font + h2->header_size;
       curr_font_bytes_per_glyph = h2->bytes_per_glyph;
    } else if (h1->magic == PSF1_MAGIC) {
       curr_font = h1;
