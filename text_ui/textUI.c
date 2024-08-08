@@ -12871,7 +12871,7 @@ int GraphBoxProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
  * ---
  * Control that draws text with big letters (3 lines height).
  */
-const int kBoxFSize = 3;
+#define kBoxFSize 3
 static char boxf[][kBoxFSize+1] = {
     "   ",
     "   ",
