@@ -255,7 +255,6 @@ static void fb_init_colors(void)
 
 /* Framebuffer initialisation and management */
 
-
 int fb_set_window(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
 	if (x + w > (uint32_t)__fb_screen_w)
 		return FB_ERR_INVALID_WINDOW;
@@ -519,6 +518,15 @@ static uint32_t curr_font_h;
 static uint32_t curr_font_w_bytes;
 static uint32_t curr_font_bytes_per_glyph;
 static uint8_t *curr_font_data;
+
+typedef void *tfb_font_t; // Opaque font type
+
+/* Internal function */
+void fb_set_default_font(fb_font_t font_id)
+{
+   if (!curr_font)
+      fb_set_current_font(font_id);
+}
 
 #define draw_char_partial(b)                                                \
    do {                                                                     \
