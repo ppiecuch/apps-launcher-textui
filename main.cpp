@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -28,6 +29,22 @@
    ({ __typeof__ (x) _x = (x); \
       __typeof__ (y) _y = (y); \
       _x > _y ? _x : _y; })
+
+
+// Set 'n' 32-bit elems pointed by 's' to 'val'.
+static inline void *memset32(void *s, uint32_t val, size_t n)
+{
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+   __asm__ volatile ("rep stosl"
+                     : "=D" (s), "=a" (val), "=c" (n)
+                     :  "D" (s), "a" (val), "c" (n)
+                     : "cc", "memory");
+#else
+   for (size_t i = 0; i < n; i++)
+      ((volatile uint32_t *)s)[i] = val;
+#endif
+   return s;
+}
 
 struct fb_var_screeninfo __fbi;
 int __fb_ttyfd = -1;
@@ -123,6 +140,33 @@ inline static uint32_t fb_make_color(uint8_t r, uint8_t g, uint8_t b)
           ((b << __fb_b_pos) & __fb_b_mask);
 }
 
+#define FB_HUE_DEGREE 256 /* Value for 1 degree (of 360) of hue, when passed to tfb_make_color_hsv() */
+#define DEG_60 (60 * FB_HUE_DEGREE)
+
+uint32_t tfb_make_color_hsv(uint32_t h, uint8_t s, uint8_t v)
+{
+   int sv = -s * v;
+   uint32_t r = 0, g = 0, b = 0;
+   uint32_t region = h / DEG_60;
+   uint32_t r1 = region;
+   uint32_t p = (256 * v - s * v) / 256;
+
+   if (!(region & 1)) {
+      r1++;
+      sv = -sv;
+   }
+   const uint32_t x = (256 * DEG_60 * v + h * sv - DEG_60 * sv * r1) / (256 * DEG_60);
+   switch(region) {
+      case 0: r = v; g = x; b = p; break;
+      case 1: r = x; g = v; b = p; break;
+      case 2: r = p; g = v; b = x; break;
+      case 3: r = p; g = x; b = v; break;
+      case 4: r = x; g = p; b = v; break;
+      case 5: r = v; g = p; b = x; break;
+   }
+   return fb_make_color(r, g, b);
+}
+
 /* Error codes */
 
 enum {
@@ -207,6 +251,25 @@ static void fb_init_colors(void)
    fb_purple = fb_make_color(128, 0, 128);
 }
 
+/* Framebuffer initialisation and management */
+
+void fb_release_fb(void)
+{
+   if (__fb_real_buffer)
+      munmap(__fb_real_buffer, __fb_size);
+
+   if (__fb_buffer != __fb_real_buffer)
+      free(__fb_buffer);
+
+   if (__fb_ttyfd != -1) {
+      ioctl(__fb_ttyfd, KDSETMODE, KD_TEXT);
+      close(__fb_ttyfd);
+   }
+
+   if (fbfd != -1)
+      close(fbfd);
+}
+
 int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device)
 {
    static struct fb_fix_screeninfo fb_fixinfo;
@@ -258,7 +321,6 @@ int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device)
    }
 
    if (!(flags & FB_FL_NO_TTY_KD_GRAPHICS)) {
-
       if (ioctl(__fb_ttyfd, KDSETMODE, KD_GRAPHICS) != 0) {
          ret = FB_ERR_TTY_GRAPHIC_MODE;
          goto out;
@@ -314,21 +376,258 @@ out:
    return ret;
 }
 
-void fb_release_fb(void)
+/* Drawing and window */
+
+int fb_set_window(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+	if (x + w > (uint32_t)__fb_screen_w)
+		return FB_ERR_INVALID_WINDOW;
+
+	if (y + h > (uint32_t)__fb_screen_h)
+		return FB_ERR_INVALID_WINDOW;
+
+	__fb_off_x = __fbi.xoffset + x;
+	__fb_off_y = __fbi.yoffset + y;
+	__fb_win_w = w;
+	__fb_win_h = h;
+	__fb_win_end_x = __fb_off_x + __fb_win_w;
+	__fb_win_end_y = __fb_off_y + __fb_win_h;
+
+	return FB_SUCCESS;
+}
+
+inline uint32_t fb_screen_width(void) { return __fb_screen_w; }
+inline uint32_t fb_screen_height(void) { return __fb_screen_h; }
+inline uint32_t fb_win_width(void) { return __fb_win_w; }
+inline uint32_t fb_win_height(void) { return __fb_win_h; }
+
+inline void fb_draw_pixel(int x, int y, uint32_t color)
 {
-   if (__fb_real_buffer)
-      munmap(__fb_real_buffer, __fb_size);
+   x += __fb_off_x;
+   y += __fb_off_y;
 
-   if (__fb_buffer != __fb_real_buffer)
-      free(__fb_buffer);
+   if ((uint32_t)x < (uint32_t)__fb_win_end_x && (uint32_t)y < (uint32_t)__fb_win_end_y)
+      ((volatile uint32_t *)__fb_buffer)[x + y * __fb_pitch_div4] = color;
+}
 
-   if (__fb_ttyfd != -1) {
-      ioctl(__fb_ttyfd, KDSETMODE, KD_TEXT);
-      close(__fb_ttyfd);
+void fb_draw_hline(int x, int y, int len, uint32_t color)
+{
+   if (x < 0) {
+      len += x;
+      x = 0;
    }
 
-   if (fbfd != -1)
-      close(fbfd);
+   x += __fb_off_x;
+   y += __fb_off_y;
+
+   if (len < 0 || y < __fb_off_y || y >= __fb_win_end_y)
+      return;
+
+   len = MIN(len, MAX(0, (int)__fb_win_end_x - x));
+   memset32(__fb_buffer + y * __fb_pitch + (x << 2), color, len);
+}
+
+void fb_draw_vline(int x, int y, int len, uint32_t color)
+{
+   if (y < 0) {
+      len += y;
+      y = 0;
+   }
+
+   x += __fb_off_x;
+   y += __fb_off_y;
+
+   if (len < 0 || x < __fb_off_x || x >= __fb_win_end_x)
+      return;
+
+   int yend = MIN(y + len, __fb_win_end_y);
+
+   volatile uint32_t *buf = ((volatile uint32_t *) __fb_buffer) + y * __fb_pitch_div4 + x;
+
+   for (; y < yend; y++, buf += __fb_pitch_div4)
+      *buf = color;
+}
+
+void fb_fill_rect(int x, int y, int w, int h, uint32_t color)
+{
+   if (w < 0) {
+      x += w;
+      w = -w;
+   }
+
+   if (h < 0) {
+      y += h;
+      h = -h;
+   }
+
+   x += __fb_off_x;
+   y += __fb_off_y;
+
+   if (x < 0) {
+      w += x;
+      x = 0;
+   }
+
+   if (y < 0) {
+      h += y;
+      y = 0;
+   }
+
+   if (w < 0 || h < 0)
+      return;
+
+   w = MIN(w, MAX(0, (int)__fb_win_end_x - x));
+   uint32_t yend = MIN(y + h, __fb_win_end_y);
+
+   void *dest = __fb_buffer + y * __fb_pitch + (x << 2);
+
+   for (uint32_t cy = y; cy < yend; cy++, dest += __fb_pitch)
+      memset32(dest, color, w);
+}
+
+void fb_draw_rect(int x, int y, int w, int h, uint32_t color)
+{
+   fb_draw_hline(x, y, w, color);
+   fb_draw_vline(x, y, h, color);
+   fb_draw_vline(x + w - 1, y, h, color);
+   fb_draw_hline(x, y + h - 1, w, color);
+}
+
+void fb_clear_screen(uint32_t color)
+{
+   if (__fb_pitch == (uint32_t) 4 * __fb_screen_w) {
+      memset32(__fb_buffer, color, __fb_size >> 2);
+      return;
+   }
+
+   for (int y = 0; y < __fb_screen_h; y++)
+      fb_draw_hline(0, y, __fb_screen_w, color);
+}
+
+void fb_clear_win(uint32_t color)
+{
+   fb_fill_rect(0, 0, __fb_win_w, __fb_win_h, color);
+}
+
+/* Fonts and text drawing */
+
+static void *curr_font;
+static uint32_t curr_font_w;
+static uint32_t curr_font_h;
+static uint32_t curr_font_w_bytes;
+static uint32_t curr_font_bytes_per_glyph;
+static uint8_t *curr_font_data;
+
+void tfb_draw_string(int x, int y, uint32_t fg_color, uint32_t bg_color, const char *s)
+{
+   if (!curr_font) {
+      fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
+      return;
+   }
+
+   for (; *s; s++, x += curr_font_w) {
+      fb_draw_char(x, y, fg_color, bg_color, *s);
+   }
+}
+
+
+#define draw_char_partial(b)                                                \
+   do {                                                                     \
+      tfb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]);    \
+      tfb_draw_pixel(x + (b << 3) + 6, row, arr[!(data[b] & (1 << 1))]);    \
+      tfb_draw_pixel(x + (b << 3) + 5, row, arr[!(data[b] & (1 << 2))]);    \
+      tfb_draw_pixel(x + (b << 3) + 4, row, arr[!(data[b] & (1 << 3))]);    \
+      tfb_draw_pixel(x + (b << 3) + 3, row, arr[!(data[b] & (1 << 4))]);    \
+      tfb_draw_pixel(x + (b << 3) + 2, row, arr[!(data[b] & (1 << 5))]);    \
+      tfb_draw_pixel(x + (b << 3) + 1, row, arr[!(data[b] & (1 << 6))]);    \
+      tfb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]);    \
+   } while (0)
+
+void tfb_draw_char(int x, int y, u32 fg_color, u32 bg_color, u8 c)
+{
+   if (!curr_font) {
+      fprintf(stderr, "[tfblib] ERROR: no font currently selected\n");
+      return;
+   }
+
+   u8 *data = curr_font_data + curr_font_bytes_per_glyph * c;
+   const u32 arr[] = { fg_color, bg_color };
+
+   /*
+    * NOTE: the following algorithm is certainly not the fastest way to draw
+    * a character on-screen, but its performance is pretty good, in particular
+    * for text that does not have to change continuosly (like a console).
+    * Actually, this algorithm is used by Tilck[1]'s framebuffer console in a
+    * fail-safe case for drawing characters on-screen: on low resolutions,
+    * its performance is pretty acceptable on modern machines, even when used
+    * by a console to full-redraw a screen with text. Therefore, for the
+    * purposes of this library (mostly to show static text on-screen), the
+    * following implementation is absolutely good enough.
+    *
+    * -------------------------------------------------
+    * [1] Tilck [A Tiny Linux-Compatible Kernel]
+    *     https://github.com/vvaltchev/tilck
+    */
+
+   if (curr_font_w_bytes == 1)
+
+      for (u32 row = y; row < (y + curr_font_h); row++) {
+         draw_char_partial(0);
+         data += curr_font_w_bytes;
+      }
+
+   else if (curr_font_w_bytes == 2)
+
+      for (u32 row = y; row < (y + curr_font_h); row++) {
+         draw_char_partial(0);
+         draw_char_partial(1);
+         data += curr_font_w_bytes;
+      }
+
+   else
+
+      for (u32 row = y; row < (y + curr_font_h); row++) {
+
+         for (u32 b = 0; b < curr_font_w_bytes; b++) {
+            draw_char_partial(b);
+         }
+
+         data += curr_font_w_bytes;
+      }
+}
+
+void tfb_draw_char_scaled(int x, int y,
+                          u32 fg, u32 bg, int xscale, int yscale, u8 c)
+{
+   if (!curr_font) {
+      fprintf(stderr, "[tfblib] ERROR: no font currently selected\n");
+      return;
+   }
+
+   if (xscale < 0)
+      x += -xscale * curr_font_w;
+
+   if (yscale < 0)
+      y += -yscale * curr_font_h;
+
+   u8 *d = curr_font_data + curr_font_bytes_per_glyph * c;
+
+   /*
+    * NOTE: this algorithm is clearly much slower than the simpler variant
+    * used in tfb_draw_char(), but it is still pretty good for static text.
+    * In case better performance is needed, the proper solution would be to use
+    * a scaled font instead of the *_scaled draw text functions.
+    */
+
+   for (u32 row = 0; row < curr_font_h; row++, d += curr_font_w_bytes)
+      for (u32 b = 0; b < curr_font_w_bytes; b++)
+         for (u32 bit = 0; bit < 8; bit++) {
+
+            const int xoff = xscale * ((b << 3) + 8 - bit - 1);
+            const int yoff = yscale * row;
+            const u32 color = (d[b] & (1 << bit)) ? fg : bg;
+
+            tfb_fill_rect(x + xoff, y + yoff, xscale, yscale, color);
+         }
 }
 
 /// MAIN RUN
@@ -355,9 +654,9 @@ int main(int argc, char **argv)
 
    /* Draw a red rectangle at the center of the screen */
    fb_draw_rect(w / 2 - rect_w / 2,  /* x coordinate */
-                 h / 2 - rect_h / 2,  /* y coordinate */
-                 rect_w,              /* width */
-                 rect_h,              /* height */
+                 h / 2 - rect_h / 2, /* y coordinate */
+                 rect_w,             /* width */
+                 rect_h,             /* height */
                  fb_red              /* color */);
 
    getchar();
