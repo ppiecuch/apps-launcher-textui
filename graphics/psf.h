@@ -10,7 +10,7 @@ struct font_file {
    unsigned char data[];
 };
 
-extern const struct font_file **tfb_font_file_list;
+extern const struct font_file **fb_font_file_list;
 
 #define PSF1_MAGIC               0x0436
 
