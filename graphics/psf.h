@@ -51,4 +51,6 @@ struct psf2_header {
     uint32_t width;           /* width in pixels */
 };
 
+typedef void *fb_font_t; /* Opaque font type */
+
 #endif // PSF_FONT_H

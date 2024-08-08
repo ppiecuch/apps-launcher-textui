@@ -253,43 +253,7 @@ static void fb_init_colors(void)
    fb_purple = fb_make_color(128, 0, 128);
 }
 
-/* Framebuffer initialisation and management */
-
-
-typedef void *fb_font_t; // Opaque font type
-
-int fb_set_current_font(fb_font_t font_id)
-{
-   const struct font_file *ff = (font_file *)font_id;
-   struct psf1_header *h1 = (psf1_header *)ff->data;
-   struct psf2_header *h2 = (psf2_header *)ff->data;
-
-   if (h2->magic == PSF2_MAGIC) {
-      curr_font = h2;
-      curr_font_w = h2->width;
-      curr_font_h = h2->height;
-      curr_font_w_bytes = h2->bytes_per_glyph / h2->height;
-      curr_font_data = curr_font + h2->header_size;
-      curr_font_bytes_per_glyph = h2->bytes_per_glyph;
-   } else if (h1->magic == PSF1_MAGIC) {
-      curr_font = h1;
-      curr_font_w = 8;
-      curr_font_h = h1->bytes_per_glyph;
-      curr_font_w_bytes = 1;
-      curr_font_data = curr_font + sizeof(struct psf1_header);
-      curr_font_bytes_per_glyph = h1->bytes_per_glyph;
-   } else {
-      return FB_ERR_INVALID_FONT_ID;
-   }
-
-   return FB_SUCCESS;
-}
-
-void fb_set_default_font(fb_font_t font_id)
-{
-   if (!curr_font)
-      fb_set_current_font(font_id);
-}
+/* Drawing and window handling */
 
 int fb_set_window(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
 	if (x + w > (uint32_t)__fb_screen_w)
@@ -307,131 +271,6 @@ int fb_set_window(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
 
 	return FB_SUCCESS;
 }
-
-void fb_release_fb(void)
-{
-   if (__fb_real_buffer)
-      munmap(__fb_real_buffer, __fb_size);
-
-   if (__fb_buffer != __fb_real_buffer)
-      free(__fb_buffer);
-
-   if (__fb_ttyfd != -1) {
-      ioctl(__fb_ttyfd, KDSETMODE, KD_TEXT);
-      close(__fb_ttyfd);
-   }
-
-   if (fbfd != -1)
-      close(fbfd);
-}
-
-int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device)
-{
-   static struct fb_fix_screeninfo fb_fixinfo;
-
-   int ret = FB_SUCCESS;
-
-   if (!fb_device)
-      fb_device = DEFAULT_FB_DEVICE;
-
-   if (!tty_device)
-      tty_device = DEFAULT_TTY_DEVICE;
-
-   fbfd = open(fb_device, O_RDWR);
-
-   if (fbfd < 0) {
-      ret = FB_ERR_OPEN_FB;
-      goto out;
-   }
-
-   if (ioctl(fbfd, FBIOGET_FSCREENINFO, &fb_fixinfo) != 0) {
-      ret = FB_ERR_IOCTL_FB;
-      goto out;
-   }
-
-   if (ioctl(fbfd, FBIOGET_VSCREENINFO, &__fbi) != 0) {
-      ret = FB_ERR_IOCTL_FB;
-      goto out;
-   }
-
-   __fb_pitch = fb_fixinfo.line_length;
-   __fb_size = __fb_pitch * __fbi.yres;
-   __fb_pitch_div4 = __fb_pitch >> 2;
-
-   if (__fbi.bits_per_pixel != 32) {
-      ret = FB_ERR_UNSUPPORTED_VIDEO_MODE;
-      goto out;
-   }
-
-   if (__fbi.red.msb_right || __fbi.green.msb_right || __fbi.blue.msb_right) {
-      ret = FB_ERR_UNSUPPORTED_VIDEO_MODE;
-      goto out;
-   }
-
-   __fb_ttyfd = open(tty_device, O_RDWR);
-
-   if (__fb_ttyfd < 0) {
-      ret = FB_ERR_OPEN_TTY;
-      goto out;
-   }
-
-   if (!(flags & FB_FL_NO_TTY_KD_GRAPHICS)) {
-      if (ioctl(__fb_ttyfd, KDSETMODE, KD_GRAPHICS) != 0) {
-         ret = FB_ERR_TTY_GRAPHIC_MODE;
-         goto out;
-      }
-   }
-
-   __fb_real_buffer = mmap(NULL, __fb_size,
-                           PROT_READ | PROT_WRITE,
-                           MAP_SHARED, fbfd, 0);
-
-   if (__fb_real_buffer == MAP_FAILED) {
-      ret = FB_ERR_MMAP_FB;
-      goto out;
-   }
-
-   if (flags & FB_FL_USE_DOUBLE_BUFFER) {
-      __fb_buffer = malloc(__fb_size);
-
-      if (!__fb_buffer) {
-         ret = FB_ERR_OUT_OF_MEMORY;
-         goto out;
-      }
-   } else {
-      __fb_buffer = __fb_real_buffer;
-   }
-
-   __fb_screen_w = __fbi.xres;
-   __fb_screen_h = __fbi.yres;
-
-   __fb_r_pos = __fbi.red.offset;
-   __fb_r_mask_size = __fbi.red.length;
-   __fb_r_mask = ((1 << __fb_r_mask_size) - 1) << __fb_r_pos;
-
-   __fb_g_pos = __fbi.green.offset;
-   __fb_g_mask_size = __fbi.green.length;
-   __fb_g_mask = ((1 << __fb_g_mask_size) - 1) << __fb_g_pos;
-
-   __fb_b_pos = __fbi.blue.offset;
-   __fb_b_mask_size = __fbi.blue.length;
-   __fb_b_mask = ((1 << __fb_b_mask_size) - 1) << __fb_b_pos;
-
-   fb_set_window(0, 0, __fb_screen_w, __fb_screen_h);
-   fb_init_colors();
-
-   /* Just use as default font the first one (if any) */
-   if (*fb_font_file_list)
-      fb_set_default_font((void *)*fb_font_file_list);
-
-out:
-   if (ret != FB_SUCCESS)
-      fb_release_fb();
-
-   return ret;
-}
-
-/* Drawing and window handling */
 
 inline uint32_t fb_screen_width(void) { return __fb_screen_w; }
 inline uint32_t fb_screen_height(void) { return __fb_screen_h; }
@@ -555,6 +394,39 @@ static uint32_t curr_font_w_bytes;
 static uint32_t curr_font_bytes_per_glyph;
 static uint8_t *curr_font_data;
 
+int fb_set_current_font(fb_font_t font_id)
+{
+   const struct font_file *ff = (font_file *)font_id;
+   struct psf1_header *h1 = (psf1_header *)ff->data;
+   struct psf2_header *h2 = (psf2_header *)ff->data;
+
+   if (h2->magic == PSF2_MAGIC) {
+      curr_font = h2;
+      curr_font_w = h2->width;
+      curr_font_h = h2->height;
+      curr_font_w_bytes = h2->bytes_per_glyph / h2->height;
+      curr_font_data = curr_font + h2->header_size;
+      curr_font_bytes_per_glyph = h2->bytes_per_glyph;
+   } else if (h1->magic == PSF1_MAGIC) {
+      curr_font = h1;
+      curr_font_w = 8;
+      curr_font_h = h1->bytes_per_glyph;
+      curr_font_w_bytes = 1;
+      curr_font_data = curr_font + sizeof(struct psf1_header);
+      curr_font_bytes_per_glyph = h1->bytes_per_glyph;
+   } else {
+      return FB_ERR_INVALID_FONT_ID;
+   }
+
+   return FB_SUCCESS;
+}
+
+void fb_set_default_font(fb_font_t font_id)
+{
+   if (!curr_font)
+      fb_set_current_font(font_id);
+}
+
 #define draw_char_partial(b)                                                \
    do {                                                                     \
       fb_draw_pixel(x + (b << 3) + 7, row, arr[!(data[b] & (1 << 0))]);    \
@@ -670,6 +542,131 @@ void tfb_draw_string_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, 
    for (; *s; s++, x += xs * curr_font_w) {
       fb_draw_char_scaled(x, y, fg, bg, xscale, yscale, *s);
    }
+}
+
+/* Framebuffer initialisation and management */
+
+void fb_release_fb(void)
+{
+   if (__fb_real_buffer)
+      munmap(__fb_real_buffer, __fb_size);
+
+   if (__fb_buffer != __fb_real_buffer)
+      free(__fb_buffer);
+
+   if (__fb_ttyfd != -1) {
+      ioctl(__fb_ttyfd, KDSETMODE, KD_TEXT);
+      close(__fb_ttyfd);
+   }
+
+   if (fbfd != -1)
+      close(fbfd);
+}
+
+int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device)
+{
+   static struct fb_fix_screeninfo fb_fixinfo;
+
+   int ret = FB_SUCCESS;
+
+   if (!fb_device)
+      fb_device = DEFAULT_FB_DEVICE;
+
+   if (!tty_device)
+      tty_device = DEFAULT_TTY_DEVICE;
+
+   fbfd = open(fb_device, O_RDWR);
+
+   if (fbfd < 0) {
+      ret = FB_ERR_OPEN_FB;
+      goto out;
+   }
+
+   if (ioctl(fbfd, FBIOGET_FSCREENINFO, &fb_fixinfo) != 0) {
+      ret = FB_ERR_IOCTL_FB;
+      goto out;
+   }
+
+   if (ioctl(fbfd, FBIOGET_VSCREENINFO, &__fbi) != 0) {
+      ret = FB_ERR_IOCTL_FB;
+      goto out;
+   }
+
+   __fb_pitch = fb_fixinfo.line_length;
+   __fb_size = __fb_pitch * __fbi.yres;
+   __fb_pitch_div4 = __fb_pitch >> 2;
+
+   if (__fbi.bits_per_pixel != 32) {
+      ret = FB_ERR_UNSUPPORTED_VIDEO_MODE;
+      goto out;
+   }
+
+   if (__fbi.red.msb_right || __fbi.green.msb_right || __fbi.blue.msb_right) {
+      ret = FB_ERR_UNSUPPORTED_VIDEO_MODE;
+      goto out;
+   }
+
+   __fb_ttyfd = open(tty_device, O_RDWR);
+
+   if (__fb_ttyfd < 0) {
+      ret = FB_ERR_OPEN_TTY;
+      goto out;
+   }
+
+   if (!(flags & FB_FL_NO_TTY_KD_GRAPHICS)) {
+      if (ioctl(__fb_ttyfd, KDSETMODE, KD_GRAPHICS) != 0) {
+         ret = FB_ERR_TTY_GRAPHIC_MODE;
+         goto out;
+      }
+   }
+
+   __fb_real_buffer = mmap(NULL, __fb_size,
+                           PROT_READ | PROT_WRITE,
+                           MAP_SHARED, fbfd, 0);
+
+   if (__fb_real_buffer == MAP_FAILED) {
+      ret = FB_ERR_MMAP_FB;
+      goto out;
+   }
+
+   if (flags & FB_FL_USE_DOUBLE_BUFFER) {
+      __fb_buffer = malloc(__fb_size);
+
+      if (!__fb_buffer) {
+         ret = FB_ERR_OUT_OF_MEMORY;
+         goto out;
+      }
+   } else {
+      __fb_buffer = __fb_real_buffer;
+   }
+
+   __fb_screen_w = __fbi.xres;
+   __fb_screen_h = __fbi.yres;
+
+   __fb_r_pos = __fbi.red.offset;
+   __fb_r_mask_size = __fbi.red.length;
+   __fb_r_mask = ((1 << __fb_r_mask_size) - 1) << __fb_r_pos;
+
+   __fb_g_pos = __fbi.green.offset;
+   __fb_g_mask_size = __fbi.green.length;
+   __fb_g_mask = ((1 << __fb_g_mask_size) - 1) << __fb_g_pos;
+
+   __fb_b_pos = __fbi.blue.offset;
+   __fb_b_mask_size = __fbi.blue.length;
+   __fb_b_mask = ((1 << __fb_b_mask_size) - 1) << __fb_b_pos;
+
+   fb_set_window(0, 0, __fb_screen_w, __fb_screen_h);
+   fb_init_colors();
+
+   /* Just use as default font the first one (if any) */
+   if (*fb_font_file_list)
+      fb_set_default_font((void *)*fb_font_file_list);
+
+out:
+   if (ret != FB_SUCCESS)
+      fb_release_fb();
+
+   return ret;
 }
 
 /// MAIN RUN
