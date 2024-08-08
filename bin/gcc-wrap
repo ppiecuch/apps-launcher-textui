@@ -1,0 +1,25 @@
+#!/usr/bin/perl -w
+
+use File::Spec;
+use File::Basename;
+use Getopt::Long;
+Getopt::Long::Configure(pass_through);
+
+my $GCC = "gcc";
+my $outdir = ".";
+GetOptions("outdir=s" => \$outdir)
+    or die("Options error");
+
+my @c_files;
+while(-f $ARGV[-1]){
+    push @c_files, pop @ARGV;
+}
+die("No input files") if(scalar @c_files == 0);
+
+foreach my $c_file (reverse @c_files){
+    my($filename, $c_path, $suffix) = fileparse($c_file, ".c");
+    my $o_file = File::Spec->catfile($outdir, "$filename.o");
+    my $cmd = "$GCC -o $o_file @ARGV $c_file";
+    print STDERR "$cmd\n";
+    system($cmd) == 0 or die("Could not execute $cmd: $!");
+}
