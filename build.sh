@@ -7,4 +7,4 @@ set -e
 
 OPTS="-Wno-sign-compare -Wno-deprecated-declarations"
 
-./bin/gcc-wrap $OPTS --outdir=obj -c -I include figlet_font/*.cpp text_ui/*.c graphics/*.c main.cpp
+./bin/gcc-wrap $OPTS --outdir=obj -c -I graphics figlet_font/*.cpp text_ui/*.c graphics/*.c main.cpp

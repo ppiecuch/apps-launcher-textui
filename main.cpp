@@ -14,6 +14,8 @@
 #include <termios.h>
 #include <errno.h>
 
+#include "psf.h"
+
 #define DEFAULT_FB_DEVICE "/dev/fb0"
 #define DEFAULT_TTY_DEVICE "/dev/tty"
 
@@ -253,6 +255,24 @@ static void fb_init_colors(void)
 
 /* Framebuffer initialisation and management */
 
+
+int fb_set_window(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+	if (x + w > (uint32_t)__fb_screen_w)
+		return FB_ERR_INVALID_WINDOW;
+
+	if (y + h > (uint32_t)__fb_screen_h)
+		return FB_ERR_INVALID_WINDOW;
+
+	__fb_off_x = __fbi.xoffset + x;
+	__fb_off_y = __fbi.yoffset + y;
+	__fb_win_w = w;
+	__fb_win_h = h;
+	__fb_win_end_x = __fb_off_x + __fb_win_w;
+	__fb_win_end_y = __fb_off_y + __fb_win_h;
+
+	return FB_SUCCESS;
+}
+
 void fb_release_fb(void)
 {
    if (__fb_real_buffer)
@@ -376,24 +396,7 @@ out:
    return ret;
 }
 
-/* Drawing and window */
-
-int fb_set_window(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
-	if (x + w > (uint32_t)__fb_screen_w)
-		return FB_ERR_INVALID_WINDOW;
-
-	if (y + h > (uint32_t)__fb_screen_h)
-		return FB_ERR_INVALID_WINDOW;
-
-	__fb_off_x = __fbi.xoffset + x;
-	__fb_off_y = __fbi.yoffset + y;
-	__fb_win_w = w;
-	__fb_win_h = h;
-	__fb_win_end_x = __fb_off_x + __fb_win_w;
-	__fb_win_end_y = __fb_off_y + __fb_win_h;
-
-	return FB_SUCCESS;
-}
+/* Drawing and window handling */
 
 inline uint32_t fb_screen_width(void) { return __fb_screen_w; }
 inline uint32_t fb_screen_height(void) { return __fb_screen_h; }
