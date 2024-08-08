@@ -260,9 +260,9 @@ typedef void *fb_font_t; // Opaque font type
 
 int fb_set_current_font(fb_font_t font_id)
 {
-   const struct font_file *ff = font_id;
-   struct psf1_header *h1 = (void *)ff->data;
-   struct psf2_header *h2 = (void *)ff->data;
+   const struct font_file *ff = (font_file *)font_id;
+   struct psf1_header *h1 = (psf1_header *)ff->data;
+   struct psf2_header *h2 = (psf2_header *)ff->data;
 
    if (h2->magic == PSF2_MAGIC) {
       curr_font = h2;
