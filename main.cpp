@@ -519,7 +519,7 @@ static uint32_t curr_font_w_bytes;
 static uint32_t curr_font_bytes_per_glyph;
 static uint8_t *curr_font_data;
 
-typedef void *tfb_font_t; // Opaque font type
+typedef void *fb_font_t; // Opaque font type
 
 /* Internal function */
 void fb_set_default_font(fb_font_t font_id)
