@@ -521,6 +521,33 @@ static uint8_t *curr_font_data;
 
 typedef void *fb_font_t; // Opaque font type
 
+int fb_set_current_font(fb_font_t font_id)
+{
+   const struct font_file *ff = font_id;
+   struct psf1_header *h1 = (void *)ff->data;
+   struct psf2_header *h2 = (void *)ff->data;
+
+   if (h2->magic == PSF2_MAGIC) {
+      curr_font = h2;
+      curr_font_w = h2->width;
+      curr_font_h = h2->height;
+      curr_font_w_bytes = h2->bytes_per_glyph / h2->height;
+      curr_font_data = curr_font + h2->header_size;
+      curr_font_bytes_per_glyph = h2->bytes_per_glyph;
+   } else if (h1->magic == PSF1_MAGIC) {
+      curr_font = h1;
+      curr_font_w = 8;
+      curr_font_h = h1->bytes_per_glyph;
+      curr_font_w_bytes = 1;
+      curr_font_data = curr_font + sizeof(struct psf1_header);
+      curr_font_bytes_per_glyph = h1->bytes_per_glyph;
+   } else {
+      return FB_ERR_INVALID_FONT_ID;
+   }
+
+   return FB_SUCCESS;
+}
+
 /* Internal function */
 void fb_set_default_font(fb_font_t font_id)
 {
