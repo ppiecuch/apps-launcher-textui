@@ -124,7 +124,6 @@ static char Cwd[65];
 /* --------------- CREATE_WINDOW Message -------------- */
 static int AppCreateWindowMsg(WINDOW wnd)
 {
-    int rtn;
     ApplicationWindow = wnd;
     ScreenHeight = SCREENHEIGHT;
     getcwd(Cwd, 64);
@@ -146,7 +145,7 @@ static int AppCreateWindowMsg(WINDOW wnd)
     SelectStatusBar(wnd);
 #endif
 
-    rtn = BaseWndProc(APPLICATION, wnd, CREATE_WINDOW, 0, 0);
+    int rtn = BaseWndProc(APPLICATION, wnd, CREATE_WINDOW, 0, 0);
     if (wnd->extension != NULL)
         CreateMenu(wnd);
     CreateStatusBar(wnd);
@@ -473,6 +472,18 @@ void SelectLines(VideoResolution  reqVR)
             if (GetTop(ApplicationWindow) >= SCREENHEIGHT-1)
                     SendMessage(ApplicationWindow, MOVE, (PARAM) GetLeft(ApplicationWindow),(PARAM) SCREENHEIGHT-WindowHeight(ApplicationWindow));
       }
+}
+
+/* ---- set the screen height in the video subsystem ---- */
+void SetScreenHeight(int height)
+{
+    SendMessage(NULL, SAVE_CURSOR, 0, 0);
+
+    // TODO reload console
+
+    SendMessage(NULL, RESTORE_CURSOR, 0, 0);
+    SendMessage(NULL, RESET_MOUSE, 0, 0);
+    SendMessage(NULL, SHOW_MOUSE, 0, 0);
 }
 
 BOOL SelectColorScheme (ColorScheme cs)
