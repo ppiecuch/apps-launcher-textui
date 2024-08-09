@@ -2489,7 +2489,7 @@ static int dircmp(const void *c1, const void *c2)
 static BOOL BuildList(WINDOW wnd, char *fspec, BOOL dirs)
 {
     int ax, i = 0, criterr = 1;
-    ffblk ff;
+    dir_ffblk ff;
     CTLWINDOW *ct = FindCommand(wnd->extension, dirs ? ID_DIRECTORY : ID_FILES,LISTBOX);
     WINDOW lwnd;
     char **dirlist = NULL;

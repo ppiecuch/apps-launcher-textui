@@ -253,7 +253,7 @@ static void FixTabMenu(void);
 /* ------ open text files and put them into editboxes ----- */
 static void PadWindow(WINDOW wnd, char *FileName) {
 	int ax, criterr = 1;
-	ffblk ff;
+	dir_ffblk ff;
 
 	char path[66];
 	char *cp;

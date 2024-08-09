@@ -22,24 +22,73 @@
 # define BOOL bool
 #endif
 
+#if (defined(__MSDOS__) && !defined(MSDOS))
+#  define MSDOS
+#endif
+
+#if defined(unix) || defined(M_XENIX) || defined(COHERENT) || defined(__hpux) || defined(__QNXNTO__) || defined(__APPLE__)
+#  ifndef UNIX
+#    define UNIX
+#  endif
+#endif /* unix || M_XENIX || COHERENT || __hpux */
+#if defined(__convexc__) || defined(MINIX) || defined(sgi)
+#  ifndef UNIX
+#    define UNIX
+#  endif
+#endif /* __convexc__ || MINIX || sgi */
+/* End of set up portability */
+
+#if (defined(UNIX) || defined(VMS))
+#  include <errno.h>
+#  ifndef ENOENT
+#    define ENOENT -1
+#  endif
+#  ifndef ENMFILE
+#    define ENMFILE ENOENT
+#  endif
+#endif /* ?UNIX/VMS */
+
 #if defined (MSDOS)
-# define DD_MAXDRIVE   3
+#    include <dos.h>
+#  ifdef __TURBOC__
+#    include <dir.h>
+#  else /* ?!__TURBOC__ */
+#    include <direct.h>
+#  endif /* ?TURBOC */
+#  define ALL_FILES_MASK "*.*"
+#  define DIR_PARENT ".."
+#  define DIR_END '\\'
+#elif defined(VMS)
+#  include <rms.h>
+#  define ALL_FILES_MASK "*.*"
+#  define DIR_PARENT "[-]"
+#  define DIR_END ']'
+#else /* ?UNIX */
+#  include <memory.h>
+#  include <dirent.h>
+#  define ALL_FILES_MASK "*"
+#  define DIR_PARENT ".."
+#  define DIR_END '/'
+#endif /* ?__TURBOC__ */
+
+#if defined (MSDOS)
+# define DF_MAXDRIVE   3
 # ifndef __FLAT__
-#  define DD_MAXPATH  80
-#  define DD_MAXDIR   66
-#  define DD_MAXFILE  16
-#  define DD_MAXEXT   10 /* allow for wildcards .[ch]*, .etc */
+#  define DF_MAXPATH  80
+#  define DF_MAXDIR   66
+#  define DF_MAXFILE  16
+#  define DF_MAXEXT   10 /* allow for wildcards .[ch]*, .etc */
 # else
-#  define DD_MAXPATH  260
-#  define DD_MAXDIR   256
-#  define DD_MAXFILE  256
-#  define DD_MAXEXT   256
+#  define DF_MAXPATH  260
+#  define DF_MAXDIR   256
+#  define DF_MAXFILE  256
+#  define DF_MAXEXT   256
 # endif /* ?__FLAT__ */
-   typedef long    off_t;
+   typedef long off_t;
 # ifdef __TURBOC__
-     typedef short   mode_t;
+     typedef short mode_t;
 # else /* ?!__TURBOC__ */
-     typedef unsigned short   mode_t;
+     typedef unsigned short mode_t;
 # endif /* ?__TURBOC__ */
 #else /* ?unix */
 /* _MAX_PATH is sometimes called differently and it may be in limits.h or stdlib.h instead of stdio.h. */
@@ -72,11 +121,11 @@
  * including the terminating null. It should be set high
  * enough to allow all legitimate uses, but halt infinite loops
  * reasonably quickly. For now we realy on _MAX_PATH value */
-#  define DD_MAXPATH    _MAX_PATH
-#  define DD_MAXDRIVE   1
-#  define DD_MAXDIR     768
-#  define DD_MAXFILE    255
-#  define DD_MAXEXT     1
+#  define DF_MAXPATH    _MAX_PATH
+#  define DF_MAXDRIVE   1
+#  define DF_MAXDIR     768
+#  define DF_MAXFILE    255
+#  define DF_MAXEXT     1
    typedef struct dirent DIR_ENT;
 #endif /* ?MSDOS */
 
@@ -88,17 +137,35 @@ int setdisk(int drive);
 int path_split(const char *, char *, char *, char *, char *);
 void path_merge(char *, char *, char *, char *, char *);
 
-typedef struct dd_ffblk_tag {
-    struct _dd_ffblk *data;
-    int position;
-} dd_ffblk;
+typedef struct {
+    char*  dd_name;             /* File name */
+    time_t dd_time;             /* File time stamp */
+    off_t  dd_size;             /* File length */
+    mode_t dd_mode;             /* Attributes of file */
 
-int dir_findfirst(const char *path, dd_ffblk *fb, int attrib);
-int dir_findnext(dd_ffblk *fb);
-int dir_getattrib(dd_ffblk *fb);
-const char* dir_getname(dd_ffblk *fb);
+    /*  Below is private (machine specific) data, which should
+     *  only be accessed by dosdir modules.
+     */
+#if defined (MSDOS)
+#  ifdef __TURBOC__
+    struct ffblk  dos_fb;
+#  else /* ?MSC */
+    struct find_t dos_fb;
+#  endif /* ?TURBOC */
+#else /* ?unix */
+    DIR*          dd_dirp;                /* Directory ptr */
+    DIR_ENT*      dd_dp;                  /* Directory entry */
+    char          dd_attribs;             /* File search attributes */
+    char          dd_filespec[DF_MAXFILE];   /* File search mask */
+#endif /* ?MSDOS */
+} dir_ffblk;
 
-typedef dd_ffblk ffblk;
+int dir_findfirst(const char *path, dir_ffblk *fb, int attrib);
+int dir_findnext(dir_ffblk *fb);
+int dir_getattrib(dir_ffblk *fb);
+const char* dir_getname(dir_ffblk *fb);
+int dir_match(const char *string, const char *pattern, int ignore_case);
+
 #define FindFirst(A, B, C) dir_findfirst((A), &(C), (B))
 #define FindNext(A)        dir_findnext(&(A))
 #define AttribOf(ff)       dir_getattrib(&(ff))
@@ -134,5 +201,17 @@ int system_button_releases(void); /* return true if a mouse button has been rele
 #ifndef _MSC_VER
 # define stricmp strcasecmp
 #endif
+
+/* Save and restore current working directory. */
+
+struct saved_cwd
+{
+    int desc;
+    char *name;
+};
+
+int save_cwd (struct saved_cwd *cwd);
+int restore_cwd (const struct saved_cwd *cwd);
+void free_cwd (struct saved_cwd *cwd);
 
 #endif // TEXTUI_SUPPORT_H
