@@ -162,8 +162,8 @@ typedef struct {
 
 int dir_findfirst(const char *path, dir_ffblk *fb, int attrib);
 int dir_findnext(dir_ffblk *fb);
-int dir_getattrib(dir_ffblk *fb);
-const char* dir_getname(dir_ffblk *fb);
+int dir_getattrib(const dir_ffblk *fb);
+const char* dir_getname(const dir_ffblk *fb);
 int dir_match(const char *string, const char *pattern, int ignore_case);
 
 #define FindFirst(A, B, C) dir_findfirst((A), &(C), (B))
