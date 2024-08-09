@@ -86,7 +86,7 @@ CONFIG cfg = {
 	FALSE /* Read only mode               */
 };
 
-void BuildFileName(char *path, const char *fn, const char *ext) {
+static void BuildFileName(char *path, const char *fn, const char *ext) {
 	char *cp = path;
 
 /* if Argv[0] is available then open file in same dir as Application binary */
