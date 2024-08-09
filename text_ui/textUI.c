@@ -1442,7 +1442,7 @@ struct htr *HelpTree;
 static int root;
 
 
-static void BuildFileName(char *fn, const char *fname, const char *ext)
+void BuildFileName(char *fn, const char *fname, const char *ext)
 {
     strcpy(fn, fname);
     strcat(fn, ext);

@@ -86,7 +86,7 @@ CONFIG cfg = {
 	FALSE /* Read only mode               */
 };
 
-static void BuildFileName(char *path, const char *fn, const char *ext) {
+static void BuildFullFileName(char *path, const char *fn, const char *ext) {
 	char *cp = path;
 
 /* if Argv[0] is available then open file in same dir as Application binary */
@@ -104,7 +104,7 @@ static void BuildFileName(char *path, const char *fn, const char *ext) {
 
 FILE *OpenConfig(char *mode) {
 	char path[64];
-	BuildFileName(path, DFLATAPPLICATION, ".cfg");
+	BuildFullFileName(path, DFLATAPPLICATION, ".cfg");
 	return fopen(path, mode);
 }
 
@@ -122,7 +122,7 @@ BOOL LoadConfig(void) {
 				fclose(fp);
 			} else {
 				char path[64];
-				BuildFileName(path, DFLATAPPLICATION, ".cfg");
+				BuildFullFileName(path, DFLATAPPLICATION, ".cfg");
 				fclose(fp);
 				unlink(path);
 				strcpy(cfg.version, ProgramVersion);
