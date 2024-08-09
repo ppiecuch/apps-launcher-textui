@@ -1277,6 +1277,8 @@ extern BOOL Debug_LogClockMessages; /* Log clock messages too? */
 
 void Calendar(WINDOW pwnd);
 
+int isLeapYear(int year);
+
 /* --------- helpbox.h ----------- */
 
 /* --------- linked list of help text collections -------- */

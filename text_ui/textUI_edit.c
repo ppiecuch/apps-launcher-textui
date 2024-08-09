@@ -1325,18 +1325,6 @@ static WINDOW Cwnd;
 static char *nameOfMonth[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 #endif
 
-/* returns 1 if year (0-based, not 1900-based) is a leap year (longer) */
-/* -ea */
-int isLeapYear(int year) {
-	if (!(year % 400))
-		return 1; /* e.g. 2000 is a leap year */
-	if (!(year % 100))
-		return 0; /* e.g. 1900 and 2100 are not */
-	if (!(year % 4))
-		return 1; /* multiple of 4? Then it is a leap year */
-	return 0; /* default: not a leap year */
-}
-
 /* Fixes ttm.tm_mday for a given month and year,
  * and recomputes the day of week and day of year
  * values, as ANSI C mktime() does. Turbo C 2.01
