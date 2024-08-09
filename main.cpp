@@ -1,3 +1,7 @@
+// Reference:
+// ----------
+//  - http://www.seasip.info/Unix/PSF/Amstrad/Setfont/index.html
+
 #include <cstdint>
 #include <string.h>
 #include <stdlib.h>

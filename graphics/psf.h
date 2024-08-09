@@ -1,7 +1,6 @@
 #ifndef PSF_FONT_H
 #define PSF_FONT_H
 
-#include <cstdint>
 #include <stdint.h>
 
 struct font_file {
