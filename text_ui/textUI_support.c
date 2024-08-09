@@ -416,6 +416,8 @@ Name        IO file access layer.
 
 *---------------------------------------------------------------------*/
 
+#include <stdio.h>
+
 GFILE *file_open(const char *name, const char *mode) { return (GFILE *)fopen(name, mode); }
 int file_stat(const char *path, struct stat *buf) { return stat(path, buf); }
 int file_fclose(GFILE *f) { return fclose((FILE *)f); }
