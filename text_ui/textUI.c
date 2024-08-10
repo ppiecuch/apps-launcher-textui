@@ -11469,10 +11469,9 @@ void BuildTextPointers(WINDOW wnd)
     unsigned int off;
     wnd->textwidth = wnd->wlines = 0;
     while (*cp)    {
-        if (incrs == INITLINES)    {
+        if (incrs == INITLINES) {
             incrs = 0;
-            wnd->TextPointers = DFrealloc(wnd->TextPointers,
-                    (wnd->wlines + INITLINES) * sizeof(int));
+            wnd->TextPointers = DFrealloc(wnd->TextPointers, (wnd->wlines + INITLINES) * sizeof(int));
         }
         off = (unsigned int) (cp - wnd->text);
         *((wnd->TextPointers) + wnd->wlines) = off;
@@ -11499,7 +11498,7 @@ static void MoveScrollBox(WINDOW wnd, int vscrollbox)
 int TextLineNumber(WINDOW wnd, char *lp)
 {
     int lineno;
-    for (lineno = 0; lineno < wnd->wlines; lineno++)    {
+    for (lineno = 0; lineno < wnd->wlines; lineno++) {
         char *cp = wnd->text + *((wnd->TextPointers) + lineno);
         if (cp == lp)
             return lineno;
@@ -11551,9 +11550,8 @@ void storevideo(RECT rc, void *bf)
 /* -------- read a character of video memory ------- */
 con_char_t GetVideoChar(int x, int y)
 {
-    con_char_t c;
     hide_mousecursor();
-    c = vpeek(video_address, vad(x,y));
+    con_char_t c = vpeek(video_address, vad(x,y));
     show_mousecursor();
     return c;
 }
@@ -11578,7 +11576,7 @@ BOOL CharInView(WINDOW wnd, int x, int y)
 
     if (!TestAttribute(wnd, VISIBLE))
         return FALSE;
-    if (!TestAttribute(wnd, NOCLIP))    {
+    if (!TestAttribute(wnd, NOCLIP)) {
         WINDOW wnd1 = GetParent(wnd);
         while (wnd1 != NULL)    {
             /* --- clip character to parent's borders -- */
@@ -11590,13 +11588,13 @@ BOOL CharInView(WINDOW wnd, int x, int y)
         }
     }
     while (nwnd != NULL)	{
-        if (!isHidden(nwnd) /* && !isAncestor(wnd, nwnd) */ )	{
+        if (!isHidden(nwnd) /* && !isAncestor(wnd, nwnd) */ ) {
             rc = WindowRect(nwnd);
             if (TestAttribute(nwnd, SHADOW))    {
                 RectBottom(rc)++;
                 RectRight(rc)++;
             }
-            if (!TestAttribute(nwnd, NOCLIP))	{
+            if (!TestAttribute(nwnd, NOCLIP)) {
                 pwnd = nwnd;
                 while (GetParent(pwnd))	{
                     pwnd = GetParent(pwnd);
@@ -11614,7 +11612,7 @@ BOOL CharInView(WINDOW wnd, int x, int y)
 /* -------- write a character to a window ------- */
 void wputch(WINDOW wnd, int c, int x, int y)
 {
-    if (CharInView(wnd, x, y))	{
+    if (CharInView(wnd, x, y)) {
         int ch = (c & 255) | (clr(foreground, background) << 8);
         int xc = GetLeft(wnd)+x;
         int yc = GetTop(wnd)+y;
@@ -11642,9 +11640,9 @@ void wputs(WINDOW wnd, void *s, int x, int y)
         char *str=s;
 
         while (*str)
-            {
+        {
             if (*str == CHANGECOLOR)
-                {
+            {
                 int fgcode, bgcode;	/* new 0.7c: sanity checks */
                 str++;
                 fgcode = (*str++);
@@ -11659,17 +11657,17 @@ void wputs(WINDOW wnd, void *s, int x, int y)
                     str--;  /* treat as non-escape sequence */
                     str--;
                 }
-                }
+            }
 
             if (*str == RESETCOLOR)
-                {
+            {
                 foreground = fg & 0x7f;
                 background = bg & 0x7f;
                 str++;
                 continue;
-                }
+            }
 
-#ifdef TAB_TOGGLING	/* made consistent with editor.c - 0.7c */
+#ifdef TAB_TOGGLING /* made consistent with editor.c - 0.7c */
             if (*str == ('\t' | 0x80) || *str == ('\f' | 0x80))
                 *cp1 = ' ' | (clr(foreground, background) << 8);
             else
@@ -11684,7 +11682,7 @@ void wputs(WINDOW wnd, void *s, int x, int y)
             str++;
             x++;
             x2++;
-            }
+        }
 
         foreground = fg;
         background = bg;
@@ -11693,49 +11691,47 @@ void wputs(WINDOW wnd, void *s, int x, int y)
             len = SCREENWIDTH-x1;
 
         if (!ClipString && !TestAttribute(wnd, NOCLIP))
-            {
+        {
             /* -- clip the line to within ancestor windows -- */
             RECT rc = WindowRect(wnd);
             WINDOW nwnd = GetParent(wnd);
 
             while (len > 0 && nwnd != NULL)
-                {
+            {
                 if (!isVisible(nwnd))
-                    {
+                {
                     len = 0;
                     break;
-                    }
+                }
 
                 rc = subRectangle(rc, ClientRect(nwnd));
                 nwnd = GetParent(nwnd);
-                }
-
-            while (len > 0 && !InsideRect(x1+off,y1,rc))
-                {
-                off++;
-                --len;
-                }
-
-            if (len > 0)
-                {
-                x2 = x1+len-1;
-                while (len && !InsideRect(x2,y1,rc))
-                    {
-                    --x2;
-                    --len;
-                    }
-
-                }
-
             }
 
-        if (len > 0)
+            while (len > 0 && !InsideRect(x1+off,y1,rc))
             {
+                off++;
+                --len;
+            }
+
+            if (len > 0)
+            {
+                x2 = x1+len-1;
+                while (len && !InsideRect(x2,y1,rc))
+                {
+                    --x2;
+                    --len;
+                }
+            }
+        }
+
+        if (len > 0)
+        {
             hide_mousecursor();
             movetoscreen(ln+off, vad(x1+off,y1), len*2);
             show_mousecursor();
-            }
         }
+    }
 }
 
 /* --------- get the current video mode -------- */
@@ -11744,6 +11740,7 @@ char *get_videomode(void)
     videomode();
 
     DEV_ASSERT(sizeof(char_info_t) == 2);
+    DEV_ASSERT(sizeof(con_info_t) == sizeof(char_info_t));
 
     if(!video_address)
         video_address = DFmalloc(SCREENWIDTH*SCREENHEIGHT*2);
@@ -11828,7 +11825,7 @@ int WatchIconProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
     static int tick = 0;
     static char *hands[] = { " \300 ", " \332 ", " \252 ", " \331 " };
     switch (msg)
-        {
+    {
         case CREATE_WINDOW:
             tick = 0;
             rtn = DefaultWndProc(wnd, msg, p1, p2);
@@ -11863,7 +11860,7 @@ int WatchIconProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
             break;
         default:
             break;
-        }
+    }
 
     return DefaultWndProc(wnd, msg, p1, p2);
 

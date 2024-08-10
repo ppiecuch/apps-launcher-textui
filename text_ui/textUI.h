@@ -15,8 +15,8 @@ typedef uint16_t con_char_t;
 typedef struct char_info_t {
 	union {
 		struct {
-			char character;
-			char attribute;
+			uint16_t character : 10;
+			uint8_t attribute : 6;
 		};
 		con_char_t ch;
 	};
@@ -1448,11 +1448,6 @@ int timer_disabled(int timer);
 #define YELLOW 14
 #define WHITE 15
 #endif
-
-/* ------- the interrupt function registers -------- */
-typedef struct REGS {
-	int bp, di, si, ds, es, dx, cx, bx, ax, ip, cs, fl;
-} IREGS;
 
 /* --------- screen prototpyes -------- */
 
