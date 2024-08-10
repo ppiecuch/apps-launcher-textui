@@ -5,7 +5,7 @@ set -e
 [ -d obj ] && rm -r obj
 [ ! -d obj ] && mkdir obj
 
-OPTS="-Wno-sign-compare -Wno-deprecated-declarations"
+OPTS="-Wno-sign-compare -Wno-deprecated-declarations -Wno-pointer-arith"
 
 ./bin/gcc-wrap $OPTS --outdir=obj -c -I . \
 	figlet_font/*.cpp \
