@@ -773,7 +773,7 @@ static void DeleteFile(WINDOW wnd) {
 /* ------ display the row and column in the statusbar ------ */
 static void ShowPosition(WINDOW wnd) {
 	/* This is where we place the "INS" display */
-	char status[40], *InsModeText;
+	char status[50], *InsModeText;
 	if (wnd->InsertMode) {
 		InsModeText = "INS "; /* Not on */
 	} else {
@@ -782,13 +782,13 @@ static void ShowPosition(WINDOW wnd) {
 
 	if (WindowWidth(wnd) < 50) /* auto-condense new in EDIT 0.7 */
 	{
-		snprintf(status, 40, "%c %c Li:%d Co:%d",
+		snprintf(status, 50, "%c %c Li:%d Co:%d",
 				(cfg.ReadOnlyMode) ? 'R' : (wnd->TextChanged ? '*' : ' '),
 				InsModeText[0], (wnd->CurrLine) + 1, (wnd->CurrCol) + 1);
 		/* 1-based column / row are nicer for humans (EDIT 0.7b) */
 		/* new flag char R for readonly added 0.7b */
 	} else
-		snprintf(status, 40, "%c %4s  Line: %4d  Col: %3d ",
+		snprintf(status, 50, "%c %4s  Line: %4d  Col: %3d ",
 				(cfg.ReadOnlyMode) ? 'R' : (wnd->TextChanged ? '*' : ' '),
 				InsModeText, (wnd->CurrLine) + 1, (wnd->CurrCol) + 1);
 	/* 1-based column / row are nicer for humans (EDIT 0.7b) */
