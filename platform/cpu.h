@@ -32,6 +32,9 @@
 #define ARCH_ARM 1
 #elif defined(__aarch64__) || defined(_M_ARM64)
 #define ARCH_ARM 1
+#define ARCH_ARM64 1
+#elif defined(__arm__) || defined(__arm)
+#define ARCH_ARM 1
 #elif defined(mips) || defined(__mips__) || defined(__mips)
 #define ARCH_MIPS 1
 #elif defined(__sh__)

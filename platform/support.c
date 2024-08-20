@@ -2,8 +2,6 @@
 // ----------
 // 1. https://github.com/legatoproject/legato-3rdParty-libiio/blob/master/local.c
 
-#include "support.h"
-
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -14,6 +12,9 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+
+#include "support.h"
+#include "cpu.h"
 
 
 #ifdef _WIN32
