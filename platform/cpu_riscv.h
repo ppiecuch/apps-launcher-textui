@@ -1,10 +1,7 @@
 #ifndef CPU_RISCV_H
 #define CPU_RISCV_H
 
-struct extension {
-  int id;
-  char* str;
-};
+#include "cpu.h"
 
 #define RISCV_ISA_EXT_NAME_LEN_MAX 32
 #define RISCV_ISA_EXT_BASE         26
@@ -72,9 +69,9 @@ static const struct extension extension_list[] = {
   { RISCV_ISA_EXT_ZIHPM,       "(Zihpm) Hardware Performance Counters" }
 };
 
-struct cpuInfo* get_cpu_info(void);
-char* get_str_topology(struct cpuInfo* cpu, struct topology* topo);
-char* get_str_extensions(struct cpuInfo* cpu);
-void print_debug(struct cpuInfo* cpu);
+struct cpu_info* get_cpu_info(void);
+char* get_str_topology(struct cpu_info* cpu, struct topology* topo);
+char* get_str_extensions(struct cpu_info* cpu);
+void print_debug(struct cpu_info* cpu);
 
 #endif // CPU_RISCV_H

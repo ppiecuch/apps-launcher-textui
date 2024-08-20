@@ -30,16 +30,16 @@
 
 #endif
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
+#if ARCH_X86
   static const char* ARCH_STR = "x86 / x86_64 build";
   #include "../x86/cpuid.h"
-#elif defined(__powerpc) || defined(__powerpc__) || defined(__powerpc64__) || defined(__POWERPC__) || defined(__ppc__) || defined(__PPC__) || defined(_ARCH_PPC)
+#elif ARCH_PPC
   static const char* ARCH_STR = "PowerPC build";
   #include "../ppc/ppc.h"
-#elif defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__) || defined(__arm)
+#elif ARCH_ARM
   static const char* ARCH_STR = "ARM build";
   #include "cpu_arm_midr.h"
-#elif defined(__riscv) || defined(__riscv__)
+#elif ARCH_RISCV
   static const char* ARCH_STR = "RISC-V build";
   #include "cpu_riscv.h"
 #endif
@@ -352,10 +352,11 @@ const char *get_build() { // Get current architecture, detectx nearly every arch
     return "POWERPC64";
     #elif defined(__sparc__) || defined(__sparc)
     return "SPARC";
+    #elif defined(__riscv) || defined(__riscv__)
+    return "RISCV";
     #elif defined(__m68k__)
     return "M68K";
     #else
     return "UNKNOWN";
     #endif
-}
 }

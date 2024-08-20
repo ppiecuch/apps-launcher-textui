@@ -3,13 +3,15 @@
 
 #include <stdint.h>
 
-struct cpuInfo* get_cpu_info(void);
+#include "cpu.h"
+
+struct cpu_info* get_cpu_info(void);
 
 uint32_t get_nsockets(struct topology* topo);
-char* get_str_topology(struct cpuInfo* cpu, struct topology* topo, bool dual_socket);
-char* get_str_features(struct cpuInfo* cpu);
+char* get_str_topology(struct cpu_info* cpu, struct topology* topo, bool dual_socket);
+char* get_str_features(struct cpu_info* cpu);
 
-void print_debug(struct cpuInfo* cpu);
+void print_debug(struct cpu_info* cpu);
 void free_topo_struct(struct topology* topo);
 
 // Code taken from cpuinfo (https://github.com/pytorch/cpuinfo/blob/master/src/arm/midr.h)
