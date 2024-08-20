@@ -1,3 +1,5 @@
+#ifndef BACKBOARD_H
+#define BACKBOARD_H
 
 #include "text_ui/textUI.h"
 #include "instruments.h"
@@ -46,9 +48,11 @@ public:
     ~BackboardWindow();
 };
 
+extern BackboardWindow backboard;
+
 #endif // __cplusplus
 
 typedef void(*_output_line_t)(const char *prefix, const char *file, int lineNumber, const char *message);
-
 extern _output_line_t output_line; // custom logger procedure
-extern BackboardWindow backboard;
+
+#endif // BACKBOARD_H
