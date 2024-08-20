@@ -16,16 +16,16 @@ namespace Figlet {
 
 typedef unsigned short u_short;
 
-Banner::Banner(
-		FontFiglet const *_characters,
-		char _Hardblank,
-		unsigned _Height,
-		unsigned _FontMaxLen,
-		unsigned _FontSize,
-		PrintMode _PrintMode,
-		const char *_MappingFrom,
-		const char *_MappingTo) :
-		characters(_characters), Hardblank(_Hardblank), Height(_Height), FontMaxLen(_FontMaxLen), FontSize(_FontSize), charPosition(0), mappingFrom(_MappingFrom), mappingTo(_MappingTo), printMode(_PrintMode) {
+Banner::Banner(FontFiglet const *_characters, char _Hardblank, unsigned _Height, unsigned _FontMaxLen, unsigned _FontSize, PrintMode _PrintMode, const char *_MappingFrom, const char *_MappingTo)
+: characters(_characters)
+, Hardblank(_Hardblank)
+, Height(_Height)
+, FontMaxLen(_FontMaxLen)
+, FontSize(_FontSize)
+, charPosition(0)
+, mappingFrom(_MappingFrom)
+, mappingTo(_MappingTo)
+, printMode(_PrintMode) {
 	std::fill(charToTable, charToTable + maxTableSize, 0); // caratteri non noti mappati in spazi
 	std::fill(rspaces, rspaces + Height, 0);
 	for (unsigned i = 0; i < FontSize; ++i) {
@@ -136,19 +136,16 @@ bool Banner::pushPacked(unsigned c) {
 
 // ---------------------------------------------------------------------------
 
-/*
-  static
-  inline
-  unsigned
-  findClass( char c ) {
-	if ( c == '|' ) return 1;
-	if ( c == '/' || c == '\\' ) return 3;
-	if ( c == '[' || c == ']'  ) return 4;
-	if ( c == '{' || c == '}'  ) return 5;
-	if ( c == '(' || c == ')'  ) return 6;
-	return 0;
-  }
-  */
+#if 0
+	static inline unsigned findClass( char c ) {
+		if ( c == '|' ) return 1;
+		if ( c == '/' || c == '\\' ) return 3;
+		if ( c == '[' || c == ']'  ) return 4;
+		if ( c == '{' || c == '}'  ) return 5;
+		if ( c == '(' || c == ')'  ) return 6;
+		return 0;
+	}
+#endif
 
 char Banner::smushingRules(char left, char right) const {
 	// rule 0: left blank use right
@@ -195,15 +192,14 @@ char Banner::smushingRules(char left, char right) const {
 	// extra rules
 	return '\0';
 
-	// not clear it if work well, for the moment are disables
-	/*
+#if 0 // not clear it if work well, for the moment are disables
 	if ( left == '<' && right == '|' ) return '<';
 	if ( left == '|' && right == '/' ) return '/';
 	if ( left == '|' && right == '(' ) return right;
 	if ( left == ')' && right == '|' ) return left;
 	if ( (left == '\\' || left == '/') && right == '|' ) return left;
 	return '\0';
-	*/
+#endif
 }
 
 bool Banner::pushSmushed(unsigned c) {
@@ -274,22 +270,22 @@ bool Banner::pushSmushed(unsigned c) {
 void Banner::fillForPrint(char const message[]) {
 	init();
 	switch (printMode) {
-		case FIGLET_SMUSHED:
+		case FIGLET_SMUSHED: {
 			for (char const *p = message; *p != '\0'; ++p)
 				pushSmushed(unsigned(*p));
-			break;
-		case FIGLET_PACKED:
+		} break;
+		case FIGLET_PACKED: {
 			for (char const *p = message; *p != '\0'; ++p)
 				pushPacked(unsigned(*p));
-			break;
-		case FIGLET_FULLWIDTH:
+		} break;
+		case FIGLET_FULLWIDTH: {
 			for (char const *p = message; *p != '\0'; ++p)
 				pushFullWidth(unsigned(*p));
-			break;
-		case FIGLET_MONOSPACED:
+		} break;
+		case FIGLET_MONOSPACED: {
 			for (char const *p = message; *p != '\0'; ++p)
 				pushMonospaced(unsigned(*p));
-			break;
+		} break;
 	}
 
 	// replace Hardblank
@@ -317,12 +313,7 @@ void Banner::fillForPrint(char const message[]) {
 
 // ---------------------------------------------------------------------------
 
-unsigned
-Banner::print(
-		char const message[],
-		ostream_type &s,
-		char const top[],
-		char const bottom[]) {
+unsigned Banner::print(char const message[], ostream_type &s, char const top[], char const bottom[]) {
 	fillForPrint(message);
 
 	for (unsigned i = 0; i < strlen(top); ++i) {
@@ -342,37 +333,28 @@ Banner::print(
 
 // ---------------------------------------------------------------------------
 
-void Banner::printFramed(
-		char const message[],
-		ostream_type &s,
-		FrameMode fm) {
+void Banner::printFramed(char const message[], ostream_type &s, FrameMode fm) {
 	fillForPrint(message);
 
 	switch (fm) {
-		case FIGLET_SINGLE:
+		case FIGLET_SINGLE: {
 			s << '+';
-			for (unsigned j = 0; j < charPosition + 2; ++j)
-				s << '-';
+			for (unsigned j = 0; j < charPosition + 2; ++j) s << '-';
 			s << "+\n";
-			for (unsigned i = 0; i < Height; ++i)
-				s << "| " << lines[i] << " |\n";
+			for (unsigned i = 0; i < Height; ++i) s << "| " << lines[i] << " |\n";
 			s << '+';
-			for (unsigned j = 0; j < charPosition + 2; ++j)
-				s << '-';
+			for (unsigned j = 0; j < charPosition + 2; ++j) s << '-';
 			s << "+\n";
-			break;
-		case FIGLET_DOUBLE:
+		} break;
+		case FIGLET_DOUBLE: {
 			s << '@';
-			for (unsigned j = 0; j < charPosition + 2; ++j)
-				s << '=';
+			for (unsigned j = 0; j < charPosition + 2; ++j) s << '=';
 			s << "@\n";
-			for (unsigned i = 0; i < Height; ++i)
-				s << "# " << lines[i] << " #\n";
+			for (unsigned i = 0; i < Height; ++i) s << "# " << lines[i] << " #\n";
 			s << '@';
-			for (unsigned j = 0; j < charPosition + 2; ++j)
-				s << '=';
+			for (unsigned j = 0; j < charPosition + 2; ++j) s << '=';
 			s << "@\n";
-			break;
+		} break;
 	}
 }
 

@@ -716,6 +716,12 @@ int fb_flush_fb(void) {
     return FB_SUCCESS;
 }
 
+/* Console management and high level ui */
+
+inline uint32_t fb_console_width(void) { __fb_screen_w / curr_font_w; }
+inline uint32_t fb_console_height(void) {  __fb_screen_h / curr_font_h; }
+
+
 /// MAIN RUN
 
 int main(int argc, char **argv)

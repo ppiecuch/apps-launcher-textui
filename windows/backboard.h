@@ -7,9 +7,11 @@
     snprintf(_ss_ret, _ss_size+1, ##__VA_ARGS__);       \
     _ss_ret; })
 
+
 class BackboardWindow
 {
-    WINDOW wnd, info, log, graph;
+    WINDOW wnd, info, log;
+    DBOX graph;
     int fnt_width, fnt_height;
     int con_width, con_height;
     bool visible;
@@ -22,7 +24,7 @@ class BackboardWindow
     };
 
 public:
-    void resize(int w, int h, float pixel_scale);
+    void resize();
     void update();
 
     void openCalendar();
@@ -42,4 +44,7 @@ public:
     ~BackboardWindow();
 };
 
+typedef void(*_output_line_t)(const char *prefix, const char *file, int lineNumber, const char *message);
+
+extern _output_line_t output_line; // custom logger procedure
 extern BackboardWindow backboard;

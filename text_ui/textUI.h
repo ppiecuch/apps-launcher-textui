@@ -1068,8 +1068,7 @@ HWND WatchIcon(void);
 
 /* /////// DIALOG BOXES  /////////////////////////////// */
 
-BOOL DialogBox(HWND, DBOX *, BOOL,
-		int (*)(struct window *, MESSAGE, PARAM, PARAM));
+BOOL DialogBox(HWND, DBOX *, BOOL, int (*)(struct window *, MESSAGE, PARAM, PARAM));
 void ClearDialogBoxes(void);
 void GetDlgListText(HWND, char *, UCOMMAND);
 BOOL RadioButtonSetting(DBOX *, UCOMMAND);
