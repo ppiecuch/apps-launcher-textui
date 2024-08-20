@@ -8,10 +8,7 @@
     snprintf(_ss_ret, _ss_size+1, ##__VA_ARGS__);       \
     _ss_ret; })
 
-enum {
-    ID_LCDLABEL=0xe000,
-    ID_PLOTGRAPH
-};
+#ifdef __cplusplus
 
 class BackboardWindow
 {
@@ -48,6 +45,8 @@ public:
     BackboardWindow();
     ~BackboardWindow();
 };
+
+#endif // __cplusplus
 
 typedef void(*_output_line_t)(const char *prefix, const char *file, int lineNumber, const char *message);
 
