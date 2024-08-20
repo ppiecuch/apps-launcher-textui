@@ -12,7 +12,7 @@
 // Errors and logging
 
 void print_err(const char *fmt, ...);
-void print_bug_message(FILE *restrict stream);
+void print_bug_message(FILE *stream);
 void print_bug(const char *fmt, ...);
 
 void print_matrix(FILE *stream, const char *name, float matrix[]);
