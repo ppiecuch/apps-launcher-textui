@@ -18,7 +18,7 @@
 #include <termios.h>
 #include <errno.h>
 
-#include "psf.h"
+#include "graphics/psf.h"
 
 #define DEFAULT_FB_DEVICE "/dev/fb0"
 #define DEFAULT_TTY_DEVICE "/dev/tty"
