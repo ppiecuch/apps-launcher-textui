@@ -71,11 +71,6 @@ static void log_output_line(const char *prefix, const char *file, int lineNumber
     backboard.logMessage(f_ssprintf("%s %s:%d %s", prefix, Filename(file).c_str(), lineNumber, message));
 }
 
-enum {
-    ID_LCDLABEL=0xe000,
-    ID_PLOTGRAPH
-};
-
 
 /* ------------ Instruments dialog box -------------- */
 

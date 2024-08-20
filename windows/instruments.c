@@ -1,6 +1,9 @@
 
 #include "text_ui/textUI.h"
 
+#include "backboard.h"
+#include "instruments.h"
+
 /* ------------ Instruments dialog box -------------- */
 
 DIALOGBOX(dbGraph)

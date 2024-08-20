@@ -1,5 +1,6 @@
 
 #include "text_ui/textUI.h"
+#include "instruments.h"
 
 # define f_ssprintf(...)                                \
     ({ int _ss_size = snprintf(0, 0, ##__VA_ARGS__);    \
@@ -7,6 +8,10 @@
     snprintf(_ss_ret, _ss_size+1, ##__VA_ARGS__);       \
     _ss_ret; })
 
+enum {
+    ID_LCDLABEL=0xe000,
+    ID_PLOTGRAPH
+};
 
 class BackboardWindow
 {
