@@ -32,4 +32,8 @@ bool exec_cmd(const char *cmd, char *result, int result_size);
 char* read_file(char* path, int* len);
 char *cat_file(const char *path);
 
+// Hardware
+
+const char *get_build();
+
 #endif // SUPPORT_H
