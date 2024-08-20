@@ -37,10 +37,12 @@ static const char RASPBIAN_LED_ON[] = "echo 1 | sudo tee /sys/class/leds/led0/br
 static const char RASPBIAN_LED_HB[] = "echo heartbeat | sudo tee /sys/class/leds/led0/trigger";
 static const char RASPBIAN_LED_FLASH[] = "echo timer | sudo tee /sys/class/leds/led0/trigger";
 
-static std::string exec_cmd(const std::string &cmd, bool &err = false) {
+static std::string exec_cmd(const std::string &cmd, bool *err = NULL) {
     std::string output;
     output.resize(1024*10);
-    err = exec_cmd(cmd.c_str(), &output[0], output.size());
+    bool ret = exec_cmd(cmd.c_str(), &output[0], output.size());
+    if (err)
+        *err = ret;
     return output;
 }
 
