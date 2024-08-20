@@ -170,7 +170,7 @@ void hex_dump(FILE *restrict stream, void *mem, int  sz) {
 
 /// Memory
 
-char * strfindreplace(char *str, const char *find, const char *replace) {
+char *strfindreplace(char *str, const char *find, const char *replace) {
     assert(strlen(replace) <= strlen(find));
 
     unsigned i, j, k, n, m;
@@ -229,7 +229,7 @@ void *emalloc(size_t size) {
 }
 
 void *ecalloc(size_t nmemb, size_t size) {
-    void* ptr = calloc(nmemb, size);
+    void *ptr = calloc(nmemb, size);
 
     if (ptr == NULL) {
         print_err("calloc failed: %s", strerror(errno));
@@ -241,39 +241,39 @@ void *ecalloc(size_t nmemb, size_t size) {
 
 /// I/O
 
-bool exec_cmd(const char *pCmd, char *Result, int nResultSize) {
-    FILE *fp = popen(pCmd, "r");
+bool exec_cmd(const char *cmd, char *result, int result_size) {
+    FILE *fp = popen(cmd, "r");
 
-    if (fgets(Result, nResultSize - 1, fp) == 0) {
+    if (fgets(result, result_size - 1, fp) == 0) {
         pclose(fp);
         return false;
     }
 
-    size_t nLength = strlen(Result);
+    size_t len = strlen(result);
 
-    if (Result[nLength - 1] < ' ') {
-        Result[nLength - 1] = '\0';
+    if (result[len - 1] < ' ') {
+        result[len - 1] = '\0';
     }
 
     pclose(fp);
     return true;
 }
 
-char* read_file(char* path, int* len) {
+char *read_file(char *path, int *len) {
     int fd = open(path, O_RDONLY);
 
     if(fd == -1) {
         return NULL;
     }
 
-    //File exists, read it
+    // File exists, read it
     int bytes_read = 0;
     int offset = 0;
     int block = 1024;
     int buf_size = block * 4;
-    char* buf = emalloc(sizeof(char) * buf_size);
+    char* buf = emalloc(sizeof(char) *buf_size);
 
-    while ((bytes_read = read(fd, buf+offset, block)) > 0) {
+    while ((bytes_read = read(fd, buf + offset, block)) > 0) {
         offset += bytes_read;
         if(offset + block > buf_size) {
             buf = erealloc(buf, sizeof(char) * (buf_size + block));
