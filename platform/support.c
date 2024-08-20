@@ -3,6 +3,7 @@
 // 1. https://github.com/legatoproject/legato-3rdParty-libiio/blob/master/local.c
 
 #include "support.h"
+
 #ifdef _WIN32
   #define NOMINMAX
   #include <windows.h>
@@ -14,6 +15,7 @@
   #include <sys/cpuset.h>
 #endif
 
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
