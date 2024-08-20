@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 
 // Errors and logging
@@ -27,7 +28,7 @@ char *strremove(char *str, const char *sub);
 
 // I/O
 
-bool exec_cmd(const char *pCmd, char *Result, int nResultSize);
+bool exec_cmd(const char *cmd, char *result, int result_size);
 char* read_file(char* path, int* len);
 char *cat_file(const char *path);
 
