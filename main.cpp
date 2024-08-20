@@ -38,8 +38,7 @@
 
 
 // Set 'n' 32-bit elems pointed by 's' to 'val'.
-static inline void *memset32(void *s, uint32_t val, size_t n)
-{
+static inline void *memset32(void *s, uint32_t val, size_t n) {
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
    __asm__ volatile ("rep stosl"
                      : "=D" (s), "=a" (val), "=c" (n)
@@ -139,16 +138,14 @@ uint32_t fb_silver;
 uint32_t fb_black;
 uint32_t fb_purple;
 
-inline static uint32_t fb_make_color(uint8_t r, uint8_t g, uint8_t b)
-{
+inline static uint32_t fb_make_color(uint8_t r, uint8_t g, uint8_t b) {
     return ((r << __fb_r_pos) & __fb_r_mask) | ((g << __fb_g_pos) & __fb_g_mask) | ((b << __fb_b_pos) & __fb_b_mask);
 }
 
 #define FB_HUE_DEGREE 256 /* Value for 1 degree (of 360) of hue, when passed to tfb_make_color_hsv() */
 #define DEG_60 (60 * FB_HUE_DEGREE)
 
-uint32_t tfb_make_color_hsv(uint32_t h, uint8_t s, uint8_t v)
-{
+uint32_t tfb_make_color_hsv(uint32_t h, uint8_t s, uint8_t v) {
     int sv = -s * v;
     uint32_t r = 0, g = 0, b = 0;
     uint32_t region = h / DEG_60;
@@ -193,8 +190,7 @@ enum {
     FB_ERR_FB_FLUSH_IOCTL_FAILED = 16, // Unable to flush the framebuffer with ioctl()
 };
 
-static const char *error_msgs[] =
-{
+static const char *error_msgs[] = {
     /*  0 */  "Success",
     /*  1 */  "Unable to open the framebuffer device",
     /*  2 */  "Unable to get screen info for the framebuffer device",
@@ -214,16 +210,14 @@ static const char *error_msgs[] =
     /* 16 */  "Unable to flush the framebuffer with ioctl()",
 };
 
-const char *fb_strerror(int error_code)
-{
+const char *fb_strerror(int error_code) {
     if (error_code < 0 || error_code >= ARRAY_SIZE(error_msgs))
         return "(unknown error)";
 
     return error_msgs[error_code];
 }
 
-static void fb_init_colors(void)
-{
+static void fb_init_colors(void) {
     fb_red = fb_make_color(255, 0, 0);
     fb_darkred = fb_make_color(139, 0, 0);
     fb_pink = fb_make_color(255, 192, 203);
@@ -279,8 +273,7 @@ inline uint32_t fb_screen_height(void) { return __fb_screen_h; }
 inline uint32_t fb_win_width(void) { return __fb_win_w; }
 inline uint32_t fb_win_height(void) { return __fb_win_h; }
 
-inline void fb_draw_pixel(int x, int y, uint32_t color)
-{
+inline void fb_draw_pixel(int x, int y, uint32_t color) {
     x += __fb_off_x;
     y += __fb_off_y;
 
@@ -288,8 +281,7 @@ inline void fb_draw_pixel(int x, int y, uint32_t color)
         ((volatile uint32_t *)__fb_buffer)[x + y * __fb_pitch_div4] = color;
 }
 
-void fb_draw_hline(int x, int y, int len, uint32_t color)
-{
+void fb_draw_hline(int x, int y, int len, uint32_t color) {
     if (x < 0) {
         len += x;
         x = 0;
@@ -305,8 +297,7 @@ void fb_draw_hline(int x, int y, int len, uint32_t color)
     memset32(__fb_buffer + y * __fb_pitch + (x << 2), color, len);
 }
 
-void fb_draw_vline(int x, int y, int len, uint32_t color)
-{
+void fb_draw_vline(int x, int y, int len, uint32_t color) {
     if (y < 0) {
         len += y;
         y = 0;
@@ -326,8 +317,7 @@ void fb_draw_vline(int x, int y, int len, uint32_t color)
         *buf = color;
 }
 
-void fb_fill_rect(int x, int y, int w, int h, uint32_t color)
-{
+void fb_fill_rect(int x, int y, int w, int h, uint32_t color) {
     if (w < 0) {
         x += w;
         w = -w;
@@ -363,16 +353,14 @@ void fb_fill_rect(int x, int y, int w, int h, uint32_t color)
         memset32(dest, color, w);
 }
 
-void fb_draw_rect(int x, int y, int w, int h, uint32_t color)
-{
+void fb_draw_rect(int x, int y, int w, int h, uint32_t color) {
     fb_draw_hline(x, y, w, color);
     fb_draw_vline(x, y, h, color);
     fb_draw_vline(x + w - 1, y, h, color);
     fb_draw_hline(x, y + h - 1, w, color);
 }
 
-void fb_clear_screen(uint32_t color)
-{
+void fb_clear_screen(uint32_t color) {
     if (__fb_pitch == (uint32_t) 4 * __fb_screen_w) {
         memset32(__fb_buffer, color, __fb_size >> 2);
         return;
@@ -396,8 +384,7 @@ static uint32_t curr_font_w_bytes;
 static uint32_t curr_font_bytes_per_glyph;
 static uint8_t *curr_font_data;
 
-int fb_set_current_font(fb_font_t font_id)
-{
+int fb_set_current_font(fb_font_t font_id) {
     const struct font_file *ff = (font_file *)font_id;
     struct psf1_header *h1 = (psf1_header *)ff->data;
     struct psf2_header *h2 = (psf2_header *)ff->data;
@@ -441,8 +428,7 @@ void fb_set_default_font(fb_font_t font_id)
         fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]);    \
     } while (0)
 
-void fb_draw_char(int x, int y, uint32_t fg_color, uint32_t bg_color, uint8_t c)
-{
+void fb_draw_char(int x, int y, uint32_t fg_color, uint32_t bg_color, uint8_t c) {
     if (!curr_font) {
         fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
         return;
@@ -488,8 +474,7 @@ void fb_draw_char(int x, int y, uint32_t fg_color, uint32_t bg_color, uint8_t c)
     }
 }
 
-void fb_draw_char_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, int yscale, uint8_t c)
-{
+void fb_draw_char_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, int yscale, uint8_t c) {
     if (!curr_font) {
         fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
         return;
@@ -520,8 +505,7 @@ void fb_draw_char_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, int
             }
 }
 
-void fb_draw_string(int x, int y, uint32_t fg_color, uint32_t bg_color, const char *s)
-{
+void fb_draw_string(int x, int y, uint32_t fg_color, uint32_t bg_color, const char *s) {
     if (!curr_font) {
         fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
         return;
@@ -532,8 +516,7 @@ void fb_draw_string(int x, int y, uint32_t fg_color, uint32_t bg_color, const ch
     }
 }
 
-void fb_draw_string_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, int yscale, const char *s)
-{
+void fb_draw_string_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, int yscale, const char *s) {
     if (!curr_font) {
         fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
         return;
@@ -548,8 +531,7 @@ void fb_draw_string_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, i
 
 /* Framebuffer initialisation and management */
 
-void fb_release_fb(void)
-{
+void fb_release_fb(void) {
     if (__fb_real_buffer)
         munmap(__fb_real_buffer, __fb_size);
 
@@ -565,8 +547,7 @@ void fb_release_fb(void)
         close(fbfd);
 }
 
-int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device)
-{
+int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device) {
     static struct fb_fix_screeninfo fb_fixinfo;
 
     int ret = FB_SUCCESS;
@@ -697,15 +678,13 @@ void fb_flush_rect(int x, int y, int w, int h) {
     size_t offset = y * __fb_pitch + (x << 2);
     void *dest = __fb_real_buffer + offset;
     void *src = __fb_buffer + offset;
-    u32 rect_pitch = w << 2;
+    uint32_t rect_pitch = w << 2;
 
     for (int cy = y; cy < yend; cy++, src += __fb_pitch, dest += __fb_pitch)
         memcpy(dest, src, rect_pitch);
 }
 
-void fb_flush_window(void) {
-    fb_flush_rect(0, 0, __fb_win_w, __fb_win_h);
-}
+void fb_flush_window(void) { fb_flush_rect(0, 0, __fb_win_w, __fb_win_h); }
 
 int fb_flush_fb(void) {
     __fbi.activate |= FB_ACTIVATE_NOW | FB_ACTIVATE_FORCE;
@@ -724,8 +703,7 @@ inline uint32_t fb_console_height(void) {  __fb_screen_h / curr_font_h; }
 
 /// MAIN RUN
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int rc;
 
     if ((rc = fb_acquire_fb(0, NULL, NULL)) != FB_SUCCESS) {
