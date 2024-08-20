@@ -89,7 +89,7 @@ float hwGetTemperatureInfo(char *tempstring) {
     return -1;
 }
 
-size_t getDeviceSummary(char *tempstring, size_t tempstring_size) {
+uint64_t getDeviceSummary(char *tempstring, uint64_t tempstring_size) {
     std::string output;
 
     output += "\n";
