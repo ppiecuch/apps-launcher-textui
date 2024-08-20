@@ -241,6 +241,17 @@ void *ecalloc(size_t nmemb, size_t size) {
     return ptr;
 }
 
+void *erealloc(void *ptr, size_t size) {
+    ptr = realloc(ptr, size);
+
+    if (ptr == NULL) {
+        print_err("erealloc failed: %s", strerror(errno));
+        exit(1);
+    }
+
+    return ptr;
+}
+
 /// I/O
 
 bool exec_cmd(const char *cmd, char *result, int result_size) {

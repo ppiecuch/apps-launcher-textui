@@ -8,7 +8,7 @@
 bool hwGetSysInfo(float &cpuload, uint64_t &totalram, uint64_t &procs, uint64_t &uptime);
 float hwGetTemperatureInfo(char *tempstring);
 
-uint64_t getDeviceSummary(char *tempstring, uint64_t tempstring_size);
+size_t getDeviceSummary(char *tempstring, size_t tempstring_size);
 
 bool hwReboot();
 bool hwPowerOff();
