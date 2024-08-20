@@ -99,7 +99,7 @@ void print_err(const char *fmt, ...) {
     print_version(stderr);
 }
 
-void print_bug_message(FILE *restrict stream) {
+void print_bug_message(FILE *stream) {
 #if defined(ARCH_X86) || defined(ARCH_PPC)
     fprintf(stream, "Please, create a new issue with this error message, the output of 'cpufetch' and 'cpufetch --debug' on https://github.com/Dr-Noob/cpufetch/issues\n");
 #elif ARCH_ARM
@@ -122,7 +122,7 @@ void print_bug(const char *fmt, ...) {
 
 
 // print 4x4 "matrix[]" in standard format
-void print_matrix(FILE *restrict stream, const char *name, float matrix[]) {
+void print_matrix(FILE *stream, const char *name, float matrix[]) {
     fprintf(stream, "Matrix : %s\n", name);
     for (int i = 0; i < 4; i++) {
         fprintf(stream,
@@ -131,7 +131,7 @@ void print_matrix(FILE *restrict stream, const char *name, float matrix[]) {
     }
 }
 
-void hex_dump(FILE *restrict stream, void *mem, int  sz) {
+void hex_dump(FILE *stream, void *mem, int  sz) {
     char printbuf[100];
     int indent = 1, index, rindex, relpos;
     struct { unsigned char *data; int sz; } buf;
