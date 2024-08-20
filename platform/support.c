@@ -4,22 +4,11 @@
 
 #include "support.h"
 
-#ifdef _WIN32
-  #define NOMINMAX
-  #include <windows.h>
-#elif defined __linux__
-  #define _GNU_SOURCE
-  #include <sched.h>
-#elif defined __FreeBSD__
-  #include <sys/param.h>
-  #include <sys/cpuset.h>
-#endif
-
-#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include <ctype.h>
 #include <string.h>
 #include <errno.h>
