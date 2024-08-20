@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/sysinfo.h>
@@ -88,14 +89,13 @@ float hwGetTemperatureInfo(char *tempstring) {
     return -1;
 }
 
-bool getDeviceSummary() {
+size_t getDeviceSummary(char *tempstring, size_t tempstring_size) {
     std::string output;
 
     output += "\n";
     output += exec_cmd("cat /sys/firmware/devicetree/base/model");
     output += "\n";
     output += "\n";
-
     output += exec_cmd("cat /etc/os-release | head -4");
     output += exec_cmd("\n");
     output += exec_cmd("uname -a");
@@ -104,7 +104,11 @@ bool getDeviceSummary() {
     output += "Throttled flag  : " + exec_cmd("vcgencmd get_throttled");
     output += "Camera          : " + exec_cmd("vcgencmd get_camera");
 
-    return output;
+    if (tempstring && tempstring_size) {
+        strncpy(tempstring, output.c_str(), tempstring_size);
+    }
+
+    return output.size();
 }
 
 bool hwReboot() {
