@@ -12,4 +12,5 @@ OPTS="-Wno-sign-compare -Wno-deprecated-declarations -Wno-pointer-arith"
 	text_ui/*.c \
 	graphics/*.c \
 	windows/*.cpp windows/*.c \
+	platform/*.cpp platform/*.c \
 	main.cpp
