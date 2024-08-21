@@ -919,7 +919,7 @@ static void _draw_thin_line(struct region_t *r, struct line_t* s) {
 }
 
 /* Draw a line on the canvas using the given character. */
-void _draw_line(struct region_t *r, int x1,  int y1,  int x2, int y2, uint32_t ch) {
+static void _draw_line(struct region_t *r, int x1,  int y1,  int x2, int y2, uint32_t ch) {
     struct line_t s;
     s.x1 = x1;
     s.y1 = y1;
@@ -1051,6 +1051,7 @@ void fb_con_draw_line(int x1, int y1, int x2, int y2, uint32_t ch) {
 
 void fb_con_draw_box(int x, int y, int w, int h) {
     struct region_t r{0, 0, (int)fb_con_width(), (int)fb_con_height()};
+    _draw_thin_box(&r, x, y, w, h);
 }
 
 /// MAIN RUN
