@@ -701,19 +701,21 @@ int fb_flush_fb(void) {
 /* Keyboard management */
 
 /* Set the TTY keyboard input to raw mode */
-int tfb_set_kb_raw_mode(uint32_t flags) {
+int fb_set_kb_raw_mode(uint32_t flags) {
 }
 
 /* Restore the TTY keyboard input to its previous state */
-int tfb_restore_kb_mode(void) {
+int fb_restore_kb_mode(void) {
 }
 
 /* Read a keystroke */
-tfb_key_t tfb_read_keypress(void) {
+fb_key_t fb_read_keypress(void) {
+    return FB_KEY_NONE;
 }
 
 /* Get the number of the F key corresponding to 'k' */
-int tfb_get_fn_key_num(tfb_key_t k) {
+int fb_get_fn_key_num(fb_key_t k) {
+    return 0;
 }
 
 /* Console management and high level ui */
@@ -736,8 +738,8 @@ static int _fill_box(int x, int y, int w, int h, uint32_t ch) {
         y = y2; y2 = tmp;
     }
 
-    const int xmax = cv->width - 1;
-    const int ymax = cv->height - 1;
+    const int xmax = fb_con_width() - 1;
+    const int ymax = fb_con_height() - 1;
 
     if (x2 < 0 || y2 < 0 || x > xmax || y > ymax)
         return 0;

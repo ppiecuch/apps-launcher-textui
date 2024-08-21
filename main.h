@@ -28,39 +28,42 @@ EXTERN_C int fb_flush_fb(void);
 
 /**
  * Non-blocking input mode
- * When passed to tfb_set_kb_raw_mode(), this flag makes the TTY input to be non-blocking.
+ * When passed to fb_set_kb_raw_mode(), this flag makes the TTY input to be non-blocking.
  */
-#define TFB_FL_KB_NONBLOCK (1 << 2)
+#define FB_FL_KB_NONBLOCK (1 << 2)
 
-typedef uint64_t tfb_key_t; /* Library's type used to represent keystrokes */
+typedef uint64_t fb_key_t; /* Library's type used to represent keystrokes */
 
-EXTERN_C int tfb_set_kb_raw_mode(uint32_t flags);
-EXTERN_C int tfb_restore_kb_mode(void);
-EXTERN_C tfb_key_t tfb_read_keypress(void);
-EXTERN_C int tfb_get_fn_key_num(tfb_key_t k);
+EXTERN_C int fb_set_kb_raw_mode(uint32_t flags);
+EXTERN_C int fb_restore_kb_mode(void);
+EXTERN_C fb_key_t fb_read_keypress(void);
+EXTERN_C int fb_get_fn_key_num(fb_key_t k);
 
-#define TFB_KEY_ENTER   ((tfb_key_t)10)
-#define TFB_KEY_UP      (*(tfb_key_t*)("\e[A\0\0\0\0\0"))
-#define TFB_KEY_DOWN    (*(tfb_key_t*)("\e[B\0\0\0\0\0"))
-#define TFB_KEY_RIGHT   (*(tfb_key_t*)("\e[C\0\0\0\0\0"))
-#define TFB_KEY_LEFT    (*(tfb_key_t*)("\e[D\0\0\0\0\0"))
-#define TFB_KEY_INS     (*(tfb_key_t*)("\e[2~\0\0\0\0\0"))
-#define TFB_KEY_DEL     (*(tfb_key_t*)("\e[3~\0\0\0\0\0"))
-#define TFB_KEY_HOME    (*(tfb_key_t*)("\e[1~\0\0\0\0\0"))
-#define TFB_KEY_END     (*(tfb_key_t*)("\e[4~\0\0\0\0\0"))
+#define FB_KEY_NONE    ((fb_key_t)0)
+#define FB_KEY_ENTER   ((fb_key_t)10)
+#define FB_KEY_UP      (*(fb_key_t*)("\e[A\0\0\0\0\0"))
+#define FB_KEY_DOWN    (*(fb_key_t*)("\e[B\0\0\0\0\0"))
+#define FB_KEY_RIGHT   (*(fb_key_t*)("\e[C\0\0\0\0\0"))
+#define FB_KEY_LEFT    (*(fb_key_t*)("\e[D\0\0\0\0\0"))
+#define FB_KEY_INS     (*(fb_key_t*)("\e[2~\0\0\0\0\0"))
+#define FB_KEY_DEL     (*(fb_key_t*)("\e[3~\0\0\0\0\0"))
+#define FB_KEY_HOME    (*(fb_key_t*)("\e[1~\0\0\0\0\0"))
+#define FB_KEY_END     (*(fb_key_t*)("\e[4~\0\0\0\0\0"))
 
-#define TFB_KEY_F1      (tfb_int_fn_key_sequences[0])
-#define TFB_KEY_F2      (tfb_int_fn_key_sequences[1])
-#define TFB_KEY_F3      (tfb_int_fn_key_sequences[2])
-#define TFB_KEY_F4      (tfb_int_fn_key_sequences[3])
-#define TFB_KEY_F5      (tfb_int_fn_key_sequences[4])
-#define TFB_KEY_F6      (tfb_int_fn_key_sequences[5])
-#define TFB_KEY_F7      (tfb_int_fn_key_sequences[6])
-#define TFB_KEY_F8      (tfb_int_fn_key_sequences[7])
-#define TFB_KEY_F9      (tfb_int_fn_key_sequences[8])
-#define TFB_KEY_F10     (tfb_int_fn_key_sequences[9])
-#define TFB_KEY_F11     (tfb_int_fn_key_sequences[10])
-#define TFB_KEY_F12     (tfb_int_fn_key_sequences[11])
+#define FB_KEY_F1      (fb_int_fn_key_sequences[0])
+#define FB_KEY_F2      (fb_int_fn_key_sequences[1])
+#define FB_KEY_F3      (fb_int_fn_key_sequences[2])
+#define FB_KEY_F4      (fb_int_fn_key_sequences[3])
+#define FB_KEY_F5      (fb_int_fn_key_sequences[4])
+#define FB_KEY_F6      (fb_int_fn_key_sequences[5])
+#define FB_KEY_F7      (fb_int_fn_key_sequences[6])
+#define FB_KEY_F8      (fb_int_fn_key_sequences[7])
+#define FB_KEY_F9      (fb_int_fn_key_sequences[8])
+#define FB_KEY_F10     (fb_int_fn_key_sequences[9])
+#define FB_KEY_F11     (fb_int_fn_key_sequences[10])
+#define FB_KEY_F12     (fb_int_fn_key_sequences[11])
+
+extern fb_key_t *fb_int_fn_key_sequences;
 
 /* Intialization and termination */
 
