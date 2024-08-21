@@ -1,5 +1,5 @@
-#ifndef CPU_H
-#define CPU_H
+#ifndef CPU_INFO_H
+#define CPU_INFO_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -212,4 +212,4 @@ struct cpu_info {
 #endif
 };
 
-#endif // CPU_H
+#endif // CPU_INFO_H

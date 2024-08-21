@@ -1,6 +1,7 @@
 // Reference:
 // ----------
 // 1. https://github.com/legatoproject/legato-3rdParty-libiio/blob/master/local.c
+// 2. https://github.com/Dr-Noob/cpufetch/blob/master/src/common/cpu.h
 
 #include <fcntl.h>
 #include <stdarg.h>
@@ -14,7 +15,7 @@
 #include <assert.h>
 
 #include "support.h"
-#include "cpu.h"
+#include "cpu_info.h"
 
 
 #ifdef _WIN32
@@ -33,13 +34,13 @@
 
 #if ARCH_X86
   static const char* ARCH_STR = "x86 / x86_64 build";
-  #include "../x86/cpuid.h"
+  #include "cpu_x86.h"
 #elif ARCH_PPC
   static const char* ARCH_STR = "PowerPC build";
-  #include "../ppc/ppc.h"
+  #include "cpu_ppc.h"
 #elif ARCH_ARM
   static const char* ARCH_STR = "ARM build";
-  #include "cpu_arm_midr.h"
+  #include "cpu_arm.h"
 #elif ARCH_RISCV
   static const char* ARCH_STR = "RISC-V build";
   #include "cpu_riscv.h"
@@ -343,6 +344,8 @@ const char *get_build() { // Get current architecture, detectx nearly every arch
     return "ARM7S";
     #elif defined(__aarch64__) || defined(_M_ARM64)
     return "ARM64";
+    #elif defined(__arm__) || defined(__arm)
+    return "ARM";
     #elif defined(mips) || defined(__mips__) || defined(__mips)
     return "MIPS";
     #elif defined(__sh__)

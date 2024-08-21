@@ -1,7 +1,7 @@
 #ifndef CPU_RISCV_H
 #define CPU_RISCV_H
 
-#include "cpu.h"
+#include "cpu_info.h"
 
 #define RISCV_ISA_EXT_NAME_LEN_MAX 32
 #define RISCV_ISA_EXT_BASE         26

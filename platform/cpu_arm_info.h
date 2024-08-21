@@ -1,9 +1,9 @@
-#ifndef CPU_ARM_MIDR_H
-#define CPU_ARM_MIDR_H
+#ifndef CPU_ARM_H
+#define CPU_ARM_H
 
 #include <stdint.h>
 
-#include "cpu.h"
+#include "cpu_info.h"
 
 struct cpu_info* get_cpu_info(void);
 
@@ -13,6 +13,8 @@ char* get_str_features(struct cpu_info* cpu);
 
 void print_debug(struct cpu_info* cpu);
 void free_topo_struct(struct topology* topo);
+
+/// ARM MIDR
 
 // Code taken from cpuinfo (https://github.com/pytorch/cpuinfo/blob/master/src/arm/midr.h)
 #define CPUINFO_ARM_MIDR_IMPLEMENTER_MASK  UINT32_C(0xFF000000)
@@ -37,4 +39,4 @@ inline static uint32_t midr_get_implementer(uint32_t midr) { return (midr & CPUI
 inline static uint32_t midr_get_part(uint32_t midr) { return (midr & CPUINFO_ARM_MIDR_PART_MASK) >> CPUINFO_ARM_MIDR_PART_OFFSET; }
 inline static uint32_t midr_get_revision(uint32_t midr) { return (midr & CPUINFO_ARM_MIDR_REVISION_MASK) >> CPUINFO_ARM_MIDR_REVISION_OFFSET; }
 
-#endif // CPU_ARM_MIDR_H
+#endif // CPU_ARM_H
