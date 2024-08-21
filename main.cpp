@@ -697,8 +697,8 @@ int fb_flush_fb(void) {
 
 /* Console management and high level ui */
 
-inline uint32_t fb_console_width(void) { return (__fb_screen_w / curr_font_w); }
-inline uint32_t fb_console_height(void) {  return (__fb_screen_h / curr_font_h); }
+uint32_t fb_console_width(void) { return (__fb_screen_w / curr_font_w); }
+uint32_t fb_console_height(void) {  return (__fb_screen_h / curr_font_h); }
 
 
 /// MAIN RUN
