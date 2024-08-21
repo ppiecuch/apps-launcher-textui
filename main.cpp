@@ -20,6 +20,8 @@
 
 #include "graphics/psf.h"
 
+#include "main.h"
+
 #define DEFAULT_FB_DEVICE "/dev/fb0"
 #define DEFAULT_TTY_DEVICE "/dev/tty"
 
@@ -697,8 +699,8 @@ int fb_flush_fb(void) {
 
 /* Console management and high level ui */
 
-uint32_t fb_console_width(void) { return (__fb_screen_w / curr_font_w); }
-uint32_t fb_console_height(void) {  return (__fb_screen_h / curr_font_h); }
+inline uint32_t fb_console_width(void) { return (__fb_screen_w / curr_font_w); }
+inline uint32_t fb_console_height(void) {  return (__fb_screen_h / curr_font_h); }
 
 
 /// MAIN RUN
