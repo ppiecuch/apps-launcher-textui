@@ -34,16 +34,16 @@
 
 #if ARCH_X86
   static const char* ARCH_STR = "x86 / x86_64 build";
-  #include "cpu_x86.h"
+  #include "cpu_x86_info.h"
 #elif ARCH_PPC
   static const char* ARCH_STR = "PowerPC build";
-  #include "cpu_ppc.h"
+  #include "cpu_ppc_info.h"
 #elif ARCH_ARM
   static const char* ARCH_STR = "ARM build";
-  #include "cpu_arm.h"
+  #include "cpu_arm_info.h"
 #elif ARCH_RISCV
   static const char* ARCH_STR = "RISC-V build";
-  #include "cpu_riscv.h"
+  #include "cpu_riscv_info.h"
 #endif
 
 #ifdef __linux__
