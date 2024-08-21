@@ -22,7 +22,11 @@
 
 #define _S(v) #v
 
-_output_line_t output_line;
+_output_line_t output_line = nullptr;
+
+void log_output_line(const char *prefix, const char *file, int lineNumber, const char *message) {
+    backboard.logMessage(f_ssprintf("%s %s:%d %s", prefix, Filename(file).c_str(), lineNumber, message));
+}
 
 /// String and filename management
 
@@ -68,11 +72,6 @@ BackboardWindow backboard;
 
 static int MainAppProc(WINDOW wnd,MESSAGE msg,PARAM p1,PARAM p2);
 static int InstrumentsProc(WINDOW wnd,MESSAGE msg,PARAM p1,PARAM p2);
-
-static void log_output_line(const char *prefix, const char *file, int lineNumber, const char *message) {
-    backboard.logMessage(f_ssprintf("%s %s:%d %s", prefix, Filename(file).c_str(), lineNumber, message));
-}
-
 
 /* ------------ Instruments dialog box -------------- */
 

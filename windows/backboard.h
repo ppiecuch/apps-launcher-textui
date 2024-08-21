@@ -54,5 +54,6 @@ extern BackboardWindow backboard;
 
 typedef void(*_output_line_t)(const char *prefix, const char *file, int lineNumber, const char *message);
 extern _output_line_t output_line; // custom logger procedure
+void log_output_line(const char *prefix, const char *file, int lineNumber, const char *message); //default logger
 
 #endif // BACKBOARD_H

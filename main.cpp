@@ -2,6 +2,7 @@
 // ----------
 //  - http://www.seasip.info/Unix/PSF/Amstrad/Setfont/index.html
 
+#include <cstddef>
 #include <cstdint>
 #include <string.h>
 #include <stdlib.h>
@@ -697,11 +698,141 @@ int fb_flush_fb(void) {
     return FB_SUCCESS;
 }
 
+/* Keyboard management */
+
+/* Set the TTY keyboard input to raw mode */
+int tfb_set_kb_raw_mode(uint32_t flags) {
+}
+
+/* Restore the TTY keyboard input to its previous state */
+int tfb_restore_kb_mode(void) {
+}
+
+/* Read a keystroke */
+tfb_key_t tfb_read_keypress(void) {
+}
+
+/* Get the number of the F key corresponding to 'k' */
+int tfb_get_fn_key_num(tfb_key_t k) {
+}
+
 /* Console management and high level ui */
 
-uint32_t fb_console_width(void) { return (__fb_screen_w / curr_font_w); }
-uint32_t fb_console_height(void) {  return (__fb_screen_h / curr_font_h); }
+uint32_t fb_con_width(void) { return (__fb_screen_w / curr_font_w); }
+uint32_t fb_con_height(void) {  return (__fb_screen_h / curr_font_h); }
 
+/* Fill a box on the canvas using the given character. */
+static int _fill_box(int x, int y, int w, int h, uint32_t ch) {
+    int x2 = x + w - 1;
+    int y2 = y + h - 1;
+
+    if (x > x2) {
+        int tmp = x;
+        x = x2; x2 = tmp;
+    }
+
+    if (y > y2) {
+        int tmp = y;
+        y = y2; y2 = tmp;
+    }
+
+    const int xmax = cv->width - 1;
+    const int ymax = cv->height - 1;
+
+    if (x2 < 0 || y2 < 0 || x > xmax || y > ymax)
+        return 0;
+
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x2 > xmax) x2 = xmax;
+    if (y2 > ymax) y2 = ymax;
+
+    for (int j = y; j <= y2; j++)
+        for (int i = x; i <= x2; i++)
+            fb_con_put_char(i, j, ch);
+
+    return 0;
+}
+
+static int _draw_box(int x, int y, int w, int h, uint32_t const *chars) {
+    int x2 = x + w - 1;
+    int y2 = y + h - 1;
+
+    if (x > x2) {
+        int tmp = x;
+        x = x2; x2 = tmp;
+    }
+
+    if (y > y2) {
+        int tmp = y;
+        y = y2; y2 = tmp;
+    }
+
+    const int xmax = fb_con_width() - 1;
+    const int ymax = fb_con_height() - 1;
+
+    if (x2 < 0 || y2 < 0 || x > xmax || y > ymax)
+        return 0;
+
+    /* Draw edges */
+    if (y >= 0)
+        for (int i = x < 0 ? 1 : x + 1; i < x2 && i < xmax; i++)
+            fb_con_put_char(i, y, chars[0]);
+
+    if (y2 <= ymax)
+        for (int i = x < 0 ? 1 : x + 1; i < x2 && i < xmax; i++)
+            fb_con_put_char(i, y2, chars[0]);
+
+    if (x >= 0)
+        for (int j = y < 0 ? 1 : y + 1; j < y2 && j < ymax; j++)
+            fb_con_put_char(x, j, chars[1]);
+
+    if (x2 <= xmax)
+        for (int j = y < 0 ? 1 : y + 1; j < y2 && j < ymax; j++)
+            fb_con_put_char(x2, j, chars[1]);
+
+    /* Draw corners */
+    fb_con_put_char(x, y, chars[2]);
+    fb_con_put_char(x, y2, chars[3]);
+    fb_con_put_char(x2, y, chars[4]);
+    fb_con_put_char(x2, y2, chars[5]);
+
+    return 0;
+}
+
+/* Draw a box on the canvas using the given character. */
+static int _draw_box(int x, int y, int w, int h, uint32_t ch) {
+    const int x2 = x + w - 1;
+    const int y2 = y + h - 1;
+
+    fb_con_draw_line(x,  y,  x, y2, ch);
+    fb_con_draw_line(x, y2, x2, y2, ch);
+    fb_con_draw_line(x2, y2, x2,  y, ch);
+    fb_con_draw_line(x2,  y,  x,  y, ch);
+
+    return 0;
+}
+
+/* Draw a thin box on the canvas. */
+static int _draw_thin_box(int x, int y, int w, int h) {
+    static uint32_t const ascii_chars[] =
+    {
+        '-', '|', ',', '`', '.', '\''
+    };
+
+    return _draw_box(x, y, w, h, ascii_chars);
+}
+
+/* Draw a box on the canvas using CP437 characters. */
+static int _draw_cp437_box(int x, int y, int w, int h) {
+    static uint32_t const cp437_chars[] =
+    {
+        /* ─ │ ┌ └ ┐ ┘ */
+        0x2500, 0x2502, 0x250c, 0x2514, 0x2510, 0x2518
+    };
+
+    return _draw_box(x, y, w, h, cp437_chars);
+}
 
 /// MAIN RUN
 
