@@ -32,6 +32,8 @@ EXTERN_C int fb_flush_fb(void);
  */
 #define TFB_FL_KB_NONBLOCK (1 << 2)
 
+typedef uint64_t tfb_key_t; /* Library's type used to represent keystrokes */
+
 EXTERN_C int tfb_set_kb_raw_mode(uint32_t flags);
 EXTERN_C int tfb_restore_kb_mode(void);
 EXTERN_C tfb_key_t tfb_read_keypress(void);
