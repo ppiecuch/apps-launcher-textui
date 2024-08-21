@@ -3,13 +3,13 @@
 
 #include <stdint.h>
 
-/* Low-level frambuffer management */
-
 #ifdef __cplusplus
 # define EXTERN_C extern "C"
 #else
 # define EXTERN_C
 #endif
+
+/* Low-level frambuffer management */
 
 EXTERN_C int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device);
 EXTERN_C void fb_release_fb(void);

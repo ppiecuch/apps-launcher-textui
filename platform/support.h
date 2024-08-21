@@ -9,31 +9,34 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+# define EXTERN_C extern "C"
+#else
+# define EXTERN_C
+#endif
 
-// Errors and logging
+/// Errors and logging
 
-void print_err(const char *fmt, ...);
-void print_bug_message(FILE *stream);
-void print_bug(const char *fmt, ...);
+EXTERN_C void print_err(const char *fmt, ...);
+EXTERN_C void print_bug_message(FILE *stream);
+EXTERN_C void print_bug(const char *fmt, ...);
 
-void print_matrix(FILE *stream, const char *name, float matrix[]);
-void hex_dump(FILE *stream, void *mem, int  sz);
-
+EXTERN_C void print_matrix(FILE *stream, const char *name, float matrix[]);
+EXTERN_C void hex_dump(FILE *stream, void *mem, int  sz);
 
 /// Memory
 
-char * strfindreplace(char *str, const char *find, const char *replace);
-char *strremove(char *str, const char *sub);
+EXTERN_C char * strfindreplace(char *str, const char *find, const char *replace);
+EXTERN_C char *strremove(char *str, const char *sub);
 
+/// I/O
 
-// I/O
+EXTERN_C bool exec_cmd(const char *cmd, char *result, int result_size);
+EXTERN_C char* read_file(char* path, int* len);
+EXTERN_C char *cat_file(const char *path);
 
-bool exec_cmd(const char *cmd, char *result, int result_size);
-char* read_file(char* path, int* len);
-char *cat_file(const char *path);
+/// Hardware
 
-// Hardware
-
-const char *get_build();
+EXTERN_C const char *get_build();
 
 #endif // SUPPORT_H
