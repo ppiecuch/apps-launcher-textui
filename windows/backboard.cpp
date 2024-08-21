@@ -22,6 +22,8 @@
 
 #define _S(v) #v
 
+_output_line_t output_line;
+
 /// String and filename management
 
 #if defined(_WIN32) || defined(WIN32)
