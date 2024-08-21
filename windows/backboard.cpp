@@ -166,8 +166,8 @@ namespace drawille {
 
 void BackboardWindow::resize() {
     if (wnd == 0) {
-        con_width = fb_console_width();
-        con_height = fb_console_height();
+        con_width = fb_con_width();
+        con_height = fb_con_height();
         logMessage(f_ssprintf("Resizing console to %dx%d chars.", con_width, con_height));
 
         if (!init_console(con_width, con_height)) {
@@ -180,10 +180,8 @@ void BackboardWindow::resize() {
         }
 
         wnd = CreateWindow(APPLICATION, "Backboard", 0, 0, -1, -1, NULL, NULL, MainAppProc, HASSTATUSBAR);
-        info = CreateWindow(TEXTVIEW, "GL Info", 2, 2, 15, 40, NULL, wnd, MainAppProc,
-                            SHADOW | MOVEABLE | HASBORDER | MINMAXBOX | VSCROLLBAR | VISIBLE);
-        log = CreateWindow(TEXTBOX, "Log", 0, con_height-kLogWinH-1, kLogWinH, con_width-1, NULL, wnd, MainAppProc,
-                           SHADOW | MOVEABLE | HASBORDER | MINMAXBOX | VSCROLLBAR | VISIBLE);
+        info = CreateWindow(TEXTVIEW, "GL Info", 2, 2, 15, 40, NULL, wnd, MainAppProc, SHADOW | MOVEABLE | HASBORDER | MINMAXBOX | VSCROLLBAR | VISIBLE);
+        log = CreateWindow(TEXTBOX, "Log", 0, con_height-kLogWinH-1, kLogWinH, con_width-1, NULL, wnd, MainAppProc, SHADOW | MOVEABLE | HASBORDER | MINMAXBOX | VSCROLLBAR | VISIBLE);
 
         DialogBox(wnd, &graph, NO, InstrumentsProc);
         //openCalendar();
