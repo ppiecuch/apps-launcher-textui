@@ -725,11 +725,213 @@ int fb_get_fn_key_num(fb_key_t k) {
 uint32_t fb_con_width(void) { return (__fb_screen_w / curr_font_w); }
 uint32_t fb_con_height(void) {  return (__fb_screen_h / curr_font_h); }
 
-void fb_con_put_char(int x, int y, uint32_t ch) {
+struct region_t {
+    int x, y;
+    int width, height;
+};
+
+struct line_t {
+    int x1, y1;
+    int x2, y2;
+    uint32_t ch;
+    void (*draw) (struct region_t*, struct line_t*);
+};
+
+void _put_char(struct region_t *w, int x, int y, uint32_t ch) {
+}
+
+/* Helper function for clip_line(). */
+static uint8_t _clip_bits(struct region_t *r, int x, int y) {
+    uint8_t b = 0;
+
+    if (x < 0)
+        b |= (1<<0);
+    else if (x >= r->width)
+        b |= (1<<1);
+
+    if (y < 0)
+        b |= (1<<2);
+    else if (y >= r->height)
+        b |= (1<<3);
+
+    return b;
+}
+
+/* Generic Cohen-Sutherland line clipping function. */
+static void _clip_line(struct region_t *r, struct line_t *s) {
+    uint8_t bits1 = _clip_bits(r, s->x1, s->y1);
+    uint8_t bits2 = _clip_bits(r, s->x2, s->y2);
+
+    if(bits1 & bits2)
+        return;
+
+    if(bits1 == 0) {
+        if(bits2 == 0)
+            s->draw(r, s);
+        else {
+            int tmp;
+            tmp = s->x1; s->x1 = s->x2; s->x2 = tmp;
+            tmp = s->y1; s->y1 = s->y2; s->y2 = tmp;
+            _clip_line(r, s);
+        }
+
+        return;
+    }
+
+    if (bits1 & (1<<0)) {
+        s->y1 = s->y2 - (s->x2 - 0) * (s->y2 - s->y1) / (s->x2 - s->x1);
+        s->x1 = 0;
+    } else if (bits1 & (1<<1)) {
+        int xmax = r->width - 1;
+        s->y1 = s->y2 - (s->x2 - xmax) * (s->y2 - s->y1) / (s->x2 - s->x1);
+        s->x1 = xmax;
+    } else if (bits1 & (1<<2)) {
+        s->x1 = s->x2 - (s->y2 - 0) * (s->x2 - s->x1) / (s->y2 - s->y1);
+        s->y1 = 0;
+    } else if (bits1 & (1<<3)) {
+        int ymax = r->height - 1;
+        s->x1 = s->x2 - (s->y2 - ymax) * (s->x2 - s->x1) / (s->y2 - s->y1);
+        s->y1 = ymax;
+    }
+
+    _clip_line(r, s);
+}
+
+
+/* Solid line drawing function, using Bresenham's mid-point line scan-conversion algorithm. */
+static void _draw_solid_line(struct region_t *r, struct line_t* s) {
+    int x1 = s->x1, y1 = s->y1, x2 = s->x2, y2 = s->y2;
+
+    int dx = abs(x2 - x1);
+    int dy = abs(y2 - y1);
+
+    int xinc = (x1 > x2) ? -1 : 1;
+    int yinc = (y1 > y2) ? -1 : 1;
+
+    if (dx >= dy) {
+        int dpr = dy << 1;
+        int dpru = dpr - (dx << 1);
+        int delta = dpr - dx;
+
+        for(; dx>=0; dx--) {
+            _put_char(r, x1, y1, s->ch);
+            if (delta > 0)
+            {
+                x1 += xinc;
+                y1 += yinc;
+                delta += dpru;
+            } else {
+                x1 += xinc;
+                delta += dpr;
+            }
+        }
+    } else {
+        int dpr = dx << 1;
+        int dpru = dpr - (dy << 1);
+        int delta = dpr - dy;
+
+        for(; dy >= 0; dy--) {
+            _put_char(r, x1, y1, s->ch);
+            if (delta > 0) {
+                x1 += xinc;
+                y1 += yinc;
+                delta += dpru;
+            } else {
+                y1 += yinc;
+                delta += dpr;
+            }
+        }
+    }
+}
+
+/* Thin line drawing function, using Bresenham's mid-point line
+ * scan-conversion algorithm and ASCII art graphics. */
+static void _draw_thin_line(struct region_t *r, struct line_t* s) {
+    uint32_t charmapx[2], charmapy[2];
+    int x1, y1, x2, y2;
+    int yinc;
+
+    if (s->x2 >= s->x1) {
+        charmapx[0] = (s->y1 > s->y2) ? ',' : '`';
+        charmapx[1] = (s->y1 > s->y2) ? '\'' : '.';
+        x1 = s->x1; y1 = s->y1; x2 = s->x2; y2 = s->y2;
+    } else {
+        charmapx[0] = (s->y1 > s->y2) ? '`' : '.';
+        charmapx[1] = (s->y1 > s->y2) ? ',' : '\'';
+        x2 = s->x1; y2 = s->y1; x1 = s->x2; y1 = s->y2;
+    }
+
+    int dx = abs(x2 - x1);
+    int dy = abs(y2 - y1);
+
+    if (y1 > y2) {
+        charmapy[0] = ',';
+        charmapy[1] = '\'';
+        yinc = -1;
+    } else {
+        yinc = 1;
+        charmapy[0] = '`';
+        charmapy[1] = '.';
+    }
+
+    if (dx >= dy) {
+        int dpr = dy << 1;
+        int dpru = dpr - (dx << 1);
+        int delta = dpr - dx;
+        int prev = 0;
+
+        for(; dx>=0; dx--) {
+            if (delta > 0) {
+                _put_char(r, x1, y1, charmapy[1]);
+                x1++;
+                y1 += yinc;
+                delta += dpru;
+                prev = 1;
+            } else {
+                if (prev)
+                    _put_char(r, x1, y1, charmapy[0]);
+                else
+                    _put_char(r, x1, y1, '-');
+                x1++;
+                delta += dpr;
+                prev = 0;
+            }
+        }
+    } else {
+        int dpr = dx << 1;
+        int dpru = dpr - (dy << 1);
+        int delta = dpr - dy;
+
+        for(; dy >= 0; dy--) {
+            if (delta > 0) {
+                _put_char(r, x1, y1, charmapx[0]);
+                _put_char(r, x1 + 1, y1, charmapx[1]);
+                x1++;
+                y1 += yinc;
+                delta += dpru;
+            } else {
+                _put_char(r, x1, y1, '|');
+                y1 += yinc;
+                delta += dpr;
+            }
+        }
+    }
+}
+
+/* Draw a line on the canvas using the given character. */
+void _draw_line(struct region_t *r, int x1,  int y1,  int x2, int y2, uint32_t ch) {
+    struct line_t s;
+    s.x1 = x1;
+    s.y1 = y1;
+    s.x2 = x2;
+    s.y2 = y2;
+    s.ch = ch;
+    s.draw = _draw_solid_line;
+    _clip_line(r, &s);
 }
 
 /* Fill a box on the canvas using the given character. */
-static int _fill_box(int x, int y, int w, int h, uint32_t ch) {
+static int _fill_box(struct region_t *r, int x, int y, int w, int h, uint32_t ch) {
     int x2 = x + w - 1;
     int y2 = y + h - 1;
 
@@ -756,12 +958,12 @@ static int _fill_box(int x, int y, int w, int h, uint32_t ch) {
 
     for (int j = y; j <= y2; j++)
         for (int i = x; i <= x2; i++)
-            fb_con_put_char(i, j, ch);
+            _put_char(r, i, j, ch);
 
     return 0;
 }
 
-static int _draw_box(int x, int y, int w, int h, uint32_t const *chars) {
+static int _draw_box(struct region_t *r, int x, int y, int w, int h, uint32_t const *chars) {
     int x2 = x + w - 1;
     int y2 = y + h - 1;
 
@@ -775,8 +977,8 @@ static int _draw_box(int x, int y, int w, int h, uint32_t const *chars) {
         y = y2; y2 = tmp;
     }
 
-    const int xmax = fb_con_width() - 1;
-    const int ymax = fb_con_height() - 1;
+    const int xmax = r->width - 1;
+    const int ymax = r->height - 1;
 
     if (x2 < 0 || y2 < 0 || x > xmax || y > ymax)
         return 0;
@@ -784,61 +986,66 @@ static int _draw_box(int x, int y, int w, int h, uint32_t const *chars) {
     /* Draw edges */
     if (y >= 0)
         for (int i = x < 0 ? 1 : x + 1; i < x2 && i < xmax; i++)
-            fb_con_put_char(i, y, chars[0]);
+            _put_char(r, i, y, chars[0]);
 
     if (y2 <= ymax)
         for (int i = x < 0 ? 1 : x + 1; i < x2 && i < xmax; i++)
-            fb_con_put_char(i, y2, chars[0]);
+            _put_char(r, i, y2, chars[0]);
 
     if (x >= 0)
         for (int j = y < 0 ? 1 : y + 1; j < y2 && j < ymax; j++)
-            fb_con_put_char(x, j, chars[1]);
+            _put_char(r, x, j, chars[1]);
 
     if (x2 <= xmax)
         for (int j = y < 0 ? 1 : y + 1; j < y2 && j < ymax; j++)
-            fb_con_put_char(x2, j, chars[1]);
+            _put_char(r, x2, j, chars[1]);
 
     /* Draw corners */
-    fb_con_put_char(x, y, chars[2]);
-    fb_con_put_char(x, y2, chars[3]);
-    fb_con_put_char(x2, y, chars[4]);
-    fb_con_put_char(x2, y2, chars[5]);
+    _put_char(r, x, y, chars[2]);
+    _put_char(r, x, y2, chars[3]);
+    _put_char(r, x2, y, chars[4]);
+    _put_char(r, x2, y2, chars[5]);
 
     return 0;
 }
 
 /* Draw a box on the canvas using the given character. */
-static int _draw_box(int x, int y, int w, int h, uint32_t ch) {
+static void _draw_box(struct region_t *r, int x, int y, int w, int h, uint32_t ch) {
     const int x2 = x + w - 1;
     const int y2 = y + h - 1;
 
-    fb_con_draw_line(x,  y,  x, y2, ch);
-    fb_con_draw_line(x, y2, x2, y2, ch);
-    fb_con_draw_line(x2, y2, x2,  y, ch);
-    fb_con_draw_line(x2,  y,  x,  y, ch);
-
-    return 0;
+    _draw_line(r, x,  y,  x, y2, ch);
+    _draw_line(r, x, y2, x2, y2, ch);
+    _draw_line(r, x2, y2, x2,  y, ch);
+    _draw_line(r, x2,  y,  x,  y, ch);
 }
 
 /* Draw a thin box on the canvas. */
-static int _draw_thin_box(int x, int y, int w, int h) {
+static int _draw_thin_box(struct region_t *r, int x, int y, int w, int h) {
     static uint32_t const ascii_chars[] =
     {
         '-', '|', ',', '`', '.', '\''
     };
 
-    return _draw_box(x, y, w, h, ascii_chars);
+    return _draw_box(r, x, y, w, h, ascii_chars);
 }
 
 /* Draw a box on the canvas using CP437 characters. */
-static int _draw_cp437_box(int x, int y, int w, int h) {
+static int _draw_cp437_box(struct region_t *r, int x, int y, int w, int h) {
     static uint32_t const cp437_chars[] =
     {
         /* ─ │ ┌ └ ┐ ┘ */
         0x2500, 0x2502, 0x250c, 0x2514, 0x2510, 0x2518
     };
 
-    return _draw_box(x, y, w, h, cp437_chars);
+    return _draw_box(r, x, y, w, h, cp437_chars);
+}
+
+void fb_con_put_char(int x, int y, uint32_t ch) {
+}
+
+void fb_con_draw_box() {
+    struct region_t w{0, 0, (int)fb_con_width(), (int)fb_con_height()};
 }
 
 /// MAIN RUN
