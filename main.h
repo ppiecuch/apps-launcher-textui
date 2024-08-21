@@ -11,6 +11,29 @@
 
 /* Low-level frambuffer management */
 
+enum {
+/**
+    * Do NOT put TTY in graphics mode.
+    *
+    * Passing this flag to tfb_acquire_fb() will
+    * allow to use the framebuffer and to see stdout on TTY as well. That usually
+    * is undesirable because the text written to TTY will overwrite the graphics.
+    */
+    FB_FL_NO_TTY_KD_GRAPHICS = (1 << 0),
+
+    /**
+    * Do NOT write directly onto the framebuffer.
+    *
+    * Passing this flag to tfb_acquire_fb() will make it allocate a regular memory
+    * buffer where all the writes (while drawing) will be directed to. The changes
+    * will appear on-screen only after manually called tfb_flush_rect() or
+    * tfb_flush_rect(). This flag is useful for applications needing to clean and
+    * redraw the whole screen (or part of it) very often (e.g. games) in order to
+    * avoid the annoying flicker effect.
+    */
+    FB_FL_USE_DOUBLE_BUFFER = (1 << 1),
+};
+
 EXTERN_C int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device);
 EXTERN_C void fb_release_fb(void);
 

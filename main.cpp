@@ -68,29 +68,6 @@ size_t __fb_size;
 size_t __fb_pitch;
 size_t __fb_pitch_div4; /* see the comment in drawing.c */
 
-enum {
-/**
-    * Do NOT put TTY in graphics mode.
-    *
-    * Passing this flag to tfb_acquire_fb() will
-    * allow to use the framebuffer and to see stdout on TTY as well. That usually
-    * is undesirable because the text written to TTY will overwrite the graphics.
-    */
-    FB_FL_NO_TTY_KD_GRAPHICS = (1 << 0),
-
-    /**
-    * Do NOT write directly onto the framebuffer.
-    *
-    * Passing this flag to tfb_acquire_fb() will make it allocate a regular memory
-    * buffer where all the writes (while drawing) will be directed to. The changes
-    * will appear on-screen only after manually called tfb_flush_rect() or
-    * tfb_flush_rect(). This flag is useful for applications needing to clean and
-    * redraw the whole screen (or part of it) very often (e.g. games) in order to
-    * avoid the annoying flicker effect.
-    */
-    FB_FL_USE_DOUBLE_BUFFER = (1 << 1),
-};
-
 /* Window-related variables */
 int __fb_win_w;
 int __fb_win_h;
@@ -1067,7 +1044,7 @@ void fatal(const char *msg) {
 int main(int argc, char **argv) {
     int rc;
 
-    if ((rc = fb_acquire_fb(0, NULL, NULL)) != FB_SUCCESS) {
+    if ((rc = fb_acquire_fb(FB_FL_NO_TTY_KD_GRAPHICS, NULL, NULL)) != FB_SUCCESS) {
         fprintf(stderr, "fb_acquire_fb() failed: %s\n", fb_strerror(rc));
         return 1;
     }
