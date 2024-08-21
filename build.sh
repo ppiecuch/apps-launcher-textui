@@ -14,3 +14,5 @@ OPTS="-Wno-sign-compare -Wno-deprecated-declarations -Wno-pointer-arith"
 	windows/*.cpp windows/*.c \
 	platform/*.cpp platform/*.c \
 	main.cpp
+
+g++ -o backboard obj/*.o
