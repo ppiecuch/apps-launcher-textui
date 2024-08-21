@@ -702,10 +702,12 @@ int fb_flush_fb(void) {
 
 /* Set the TTY keyboard input to raw mode */
 int fb_set_kb_raw_mode(uint32_t flags) {
+    return 0;
 }
 
 /* Restore the TTY keyboard input to its previous state */
 int fb_restore_kb_mode(void) {
+    return 0;
 }
 
 /* Read a keystroke */
