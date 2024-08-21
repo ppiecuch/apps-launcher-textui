@@ -725,6 +725,9 @@ int fb_get_fn_key_num(fb_key_t k) {
 uint32_t fb_con_width(void) { return (__fb_screen_w / curr_font_w); }
 uint32_t fb_con_height(void) {  return (__fb_screen_h / curr_font_h); }
 
+void fb_con_put_char(int x, int y, uint32_t ch) {
+}
+
 /* Fill a box on the canvas using the given character. */
 static int _fill_box(int x, int y, int w, int h, uint32_t ch) {
     int x2 = x + w - 1;
@@ -853,20 +856,12 @@ int main(int argc, char **argv) {
     uint32_t rect_w = w / 2;
     uint32_t rect_h = h / 2;
 
-    /* Paint the whole screen in black */
-    fb_clear_screen(fb_black);
-
-    /* Draw some text on-screen */
-    fb_draw_string(10, 10, fb_white, fb_black, "Press ENTER to quit");
-
-    /* Draw a red rectangle at the center of the screen */
-    fb_draw_rect(w / 2 - rect_w / 2,  /* x coordinate */
-                 h / 2 - rect_h / 2, /* y coordinate */
-                 rect_w,             /* width */
-                 rect_h,             /* height */
-                 fb_red              /* color */);
+    fb_clear_screen(fb_black); /* Paint the whole screen in black */
+    fb_draw_string(10, 10, fb_white, fb_black, "Press ENTER to quit"); /* Draw some text on-screen */
+    fb_draw_rect(w / 2 - rect_w / 2, h / 2 - rect_h / 2, rect_w, rect_h, fb_red); /* Draw a red rectangle at the center of the screen */
 
     getchar();
     fb_release_fb();
+
     return 0;
 }
