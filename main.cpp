@@ -1042,10 +1042,15 @@ static int _draw_cp437_box(struct region_t *r, int x, int y, int w, int h) {
 }
 
 void fb_con_put_char(int x, int y, uint32_t ch) {
+    struct region_t r{0, 0, (int)fb_con_width(), (int)fb_con_height()};
 }
 
-void fb_con_draw_box() {
-    struct region_t w{0, 0, (int)fb_con_width(), (int)fb_con_height()};
+void fb_con_draw_line(int x1, int y1, int x2, int y2, uint32_t ch) {
+    struct region_t r{0, 0, (int)fb_con_width(), (int)fb_con_height()};
+}
+
+void fb_con_draw_box(int x, int y, int w, int h) {
+    struct region_t r{0, 0, (int)fb_con_width(), (int)fb_con_height()};
 }
 
 /// MAIN RUN

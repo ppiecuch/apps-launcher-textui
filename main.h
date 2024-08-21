@@ -21,7 +21,8 @@ EXTERN_C uint32_t fb_con_width(void);
 EXTERN_C uint32_t fb_con_height(void);
 
 EXTERN_C void fb_con_put_char(int x, int y, uint32_t ch);
-EXTERN_C void fb_con_draw_line(int x1,  int y1,  int x2, int y2, uint32_t ch);
+EXTERN_C void fb_con_draw_line(int x1, int y1, int x2, int y2, uint32_t ch);
+EXTERN_C void fb_con_draw_box(int x, int y, int w, int h);
 
 EXTERN_C void fb_flush_rect(int x, int y, int w, int h);
 EXTERN_C void fb_flush_window(void);
