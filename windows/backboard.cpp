@@ -22,12 +22,6 @@
 
 #define _S(v) #v
 
-_output_line_t output_line = nullptr;
-
-void log_output_line(const char *prefix, const char *file, int lineNumber, const char *message) {
-    backboard.logMessage(f_ssprintf("%s %s:%d %s", prefix, Filename(file).c_str(), lineNumber, message));
-}
-
 /// String and filename management
 
 #if defined(_WIN32) || defined(WIN32)
@@ -62,6 +56,14 @@ inline std::string Basename (const std::string path, const char *sep = PATH_SEP)
         return path.substr (slash+1, point - (slash+1));
     else
         return path.substr (slash+1);
+}
+
+/// Logging and errors handling
+
+_output_line_t output_line = nullptr;
+
+void log_output_line(const char *prefix, const char *file, int lineNumber, const char *message) {
+    backboard.logMessage(f_ssprintf("%s %s:%d %s", prefix, Filename(file).c_str(), lineNumber, message));
 }
 
 /// Blackboard implementation
