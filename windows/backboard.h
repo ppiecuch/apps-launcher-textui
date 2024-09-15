@@ -12,13 +12,14 @@
 
 #ifdef __cplusplus
 
+class DeviceInfo;
+
 class BackboardWindow
 {
     WINDOW wnd, info, log;
-    DBOX graph;
     int fnt_width, fnt_height;
     int con_width, con_height;
-    bool visible;
+    bool visible, quitting;
 
     enum LogMsgType {
         LOG_MSG_INFO,
@@ -27,9 +28,13 @@ class BackboardWindow
         LOG_MSG_ERROR
     };
 
+    DeviceInfo *device;
+
 public:
     void resize();
     void update();
+
+    bool quit();
 
     void openCalendar();
     void openSysMessageLog();
@@ -39,7 +44,7 @@ public:
     bool logMessage(const char* msg);
     bool logMessage(LogMsgType msg_type, const char* msg);
 
-    void dispatch_message();
+    bool dispatchMessage();
 
     void toggleVisible() { visible = !visible; }
     bool isVisible() const { return visible; }

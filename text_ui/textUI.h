@@ -8,35 +8,17 @@
 #include <time.h>
 
 /* ------------------------------------------------------ */
-/* ----- DFlat+ Portability layer ----------------------- */
-/* ------------------------------------------------------ */
-
-typedef uint16_t con_char_t;
-typedef struct char_info_t {
-	union {
-		struct {
-			uint16_t character : 10;
-			uint8_t attribute : 6;
-		};
-		con_char_t ch;
-	};
-} char_info_t;
-
-int getScreenWidth();
-int getScreenHeight();
-
-/* ------------------------------------------------------ */
 /* ----- DFlat+ Compilation include --------------------- */
 /* ------------------------------------------------------ */
 
 /* DFlat+ library compilation include
- * All the internal cross-references between modules.
- */
+* All the internal cross-references between modules.
+*/
 
 /* /////// GLOBAL DEFINES /////////////////////////////// */
 
 /* NOTE: Future versions will include these by default.
-		 Do not alter/rely on them                        */
+        Do not alter/rely on them                        */
 
 #define INCLUDE_MULTI_WINDOWS /* MDI */
 #define INCLUDE_SHELLDOS /* Hability to run DOS apps */
@@ -80,15 +62,15 @@ extern "C" {
 #define BOOL bool
 #endif
 #define swapi(a, b) \
-	{               \
-		int x = a;  \
-		a = b;      \
-		b = x;      \
-	}
+    {               \
+        int x = a;  \
+        a = b;      \
+        b = x;      \
+    }
 #define MK_WORD(s, o) (((uint16_t)(s)) | ((uint32_t)(o)) << 16)
 
 typedef struct {
-	int lf, tp, rt, bt;
+    int lf, tp, rt, bt;
 } RECT;
 
 /* /////// CONSTANTS //////////////////////////////////// */
@@ -100,10 +82,10 @@ typedef struct {
 #define MAXEXT 8
 
 enum {
-	EXTENSION = 0x01,
-	FILENAME = 0x02,
-	DIRECTORY = 0x04,
-	DRIVE = 0x08
+    EXTENSION = 0x01,
+    FILENAME = 0x02,
+    DIRECTORY = 0x04,
+    DRIVE = 0x08
 };
 
 #define MAXMESSAGES 100
@@ -161,43 +143,43 @@ enum {
 
 #define BEGIN_USER_MESSAGES enum user_messages { DEFAULT_USER_MESSAGE = 10000,
 #define END_USER_MESSAGES \
-	, LAST_USER_MESSAGE   \
-	}                     \
-	;
+    , LAST_USER_MESSAGE   \
+    }                     \
+    ;
 
 #define BEGIN_DIALOG_MESSAGES enum std_dialog_messages { DEFAULT_DIALOG_MESSAGE = 6000,
 #define END_DIALOG_MESSAGES \
-	, LAST_DIALOG_MESSAGE   \
-	}                       \
-	;
+    , LAST_DIALOG_MESSAGE   \
+    }                       \
+    ;
 
 #define BEGIN_USER_COMMANDS enum user_commands { DEFAULT_USER_COMMAND = 10000,
 #define END_USER_COMMANDS \
-	, LAST_USER_COMMAND   \
-	}                     \
-	;
+    , LAST_USER_COMMAND   \
+    }                     \
+    ;
 
 /* --------- macros to define a menu bar with popdowns and selections ------------- */
 #define SEPCHAR "\xc4"
 #define DEFMENU(m) MBAR m = { -1, {
 #define POPDOWN(ttl, func, stat) \
-	{                            \
-		ttl, func, stat, -1, 0, {
+    {                            \
+        ttl, func, stat, -1, 0, {
 #define CASCADED_POPDOWN(id, func) \
-	{                              \
-		NULL, func, NULL, id, 0, {
+    {                              \
+        NULL, func, NULL, id, 0, {
 #define SELECTION(stxt, acc, id, attr) { stxt, acc, id, attr, #acc },
 #define SEPARATOR { SEPCHAR },
 #define ENDPOPDOWN \
-	{ NULL }       \
-	}              \
-	}              \
-	,
+    { NULL }       \
+    }              \
+    }              \
+    ,
 #define ENDMENU    \
-	{ (char *)-1 } \
-	}              \
-	}              \
-	;
+    { (char *)-1 } \
+    }              \
+    }              \
+    ;
 
 /* ------------ Macros to describe a Module      ---------- */
 
@@ -209,79 +191,113 @@ enum {
 #define MOD_LICENSE(s) , s
 #define MOD_ABOUT(s) , s
 #define END_DEFMODULE \
-	}                 \
-	;
+    }                 \
+    ;
+
+/* ------------------------------------------------------ */
+/* ----- DFlat+ Portability layer ----------------------- */
+/* ------------------------------------------------------ */
+
+/* +---------+---------+----+----+------+ */
+/* | attribs | fontset | fg | bg | char | */
+/* +---------+---------+----+----+------+ */
+/* 32........18........16...12...8......0 */
+
+typedef uint32_t con_char_t;
+typedef struct char_info_t {
+    union {
+        struct {
+            uint8_t character;
+            union {
+                uint8_t attribute;
+                struct {
+                    uint8_t fg : 4;
+                    uint8_t bg : 4;
+                };
+            };
+            union {
+                uint16_t extended;
+                struct {
+                    uint8_t font : 2;
+                    BOOL reverse : 1;
+                    BOOL blink : 1;
+                };
+            };
+        };
+        con_char_t ch;
+    };
+} char_info_t;
 
 /* ---------------- commands.h ----------------- */
 
 /*
- * Command values sent as the first parameter
- * in the COMMAND message
- *
- * Add application-specific commands to this enum
- */
+* Command values sent as the first parameter
+* in the COMMAND message
+*
+* Add application-specific commands to this enum
+*/
 
 enum commands {
 /* --------------- System menu -------------- */
 #ifdef INCLUDE_RESTORE
-	ID_SYSRESTORE,
+    ID_SYSRESTORE,
 #endif
-	ID_SYSMOVE,
-	ID_SYSSIZE,
+    ID_SYSMOVE,
+    ID_SYSSIZE,
 #ifdef INCLUDE_MINIMIZE
-	ID_SYSMINIMIZE,
+    ID_SYSMINIMIZE,
 #endif
 #ifdef INCLUDE_MAXIMIZE
-	ID_SYSMAXIMIZE,
+    ID_SYSMAXIMIZE,
 #endif
-	ID_SYSCLOSE,
-	/* --------------- Edit box  ---------------- */
-	ID_UNDO,
-	ID_CUT,
-	ID_COPY,
-	ID_PASTE,
-	ID_PARAGRAPH,
-	ID_CLEAR,
-	ID_DELETETEXT,
-	ID_UPCASE,
-	ID_DOWNCASE,
-	ID_WORDCOUNT,
-	ID_SEARCH,
-	ID_REPLACE,
-	ID_SEARCHNEXT,
-	/* ---- FileOpen and SaveAs dialog boxes ---- */
-	ID_FILENAME,
-	ID_FILES,
-	ID_DIRECTORY,
-	ID_DRIVE,
-	ID_PATH,
-	/* ----- Search and Replace dialog boxes ---- */
-	ID_SEARCHFOR,
-	ID_REPLACEWITH,
-	ID_MATCHCASE,
-	ID_REPLACEALL,
-	/* ----------- Windows dialog box ----------- */
-	ID_WINDOWLIST,
-	/* --------- generic command buttons -------- */
-	ID_OK,
-	ID_CANCEL,
-	ID_HELP,
-	/* ------------ Display dialog box ---------- */
-	ID_BORDER,
-	ID_TITLE,
-	ID_STATUSBAR,
-	ID_TEXTURE,
-	ID_COLOR,
-	ID_MONO,
-	ID_REVERSE,
-	/* ---------- Print Select dialog box --------- */
-	ID_PRINTERPORT,
-	ID_LEFTMARGIN,
-	ID_RIGHTMARGIN,
-	ID_TOPMARGIN,
-	ID_BOTTOMMARGIN,
-	/* ----------- InputBox dialog box ------------ */
-	ID_INPUTTEXT
+    ID_SYSCLOSE,
+    /* --------------- Edit box  ---------------- */
+    ID_UNDO,
+    ID_CUT,
+    ID_COPY,
+    ID_PASTE,
+    ID_PARAGRAPH,
+    ID_CLEAR,
+    ID_DELETETEXT,
+    ID_UPCASE,
+    ID_DOWNCASE,
+    ID_WORDCOUNT,
+    ID_SEARCH,
+    ID_REPLACE,
+    ID_SEARCHNEXT,
+    /* ---- FileOpen and SaveAs dialog boxes ---- */
+    ID_FILENAME,
+    ID_FILES,
+    ID_DIRECTORY,
+    ID_DRIVE,
+    ID_PATH,
+    /* ----- Search and Replace dialog boxes ---- */
+    ID_SEARCHFOR,
+    ID_REPLACEWITH,
+    ID_MATCHCASE,
+    ID_REPLACEALL,
+    /* ----------- Windows dialog box ----------- */
+    ID_WINDOWLIST,
+    /* --------- generic command buttons -------- */
+    ID_OK,
+    ID_CANCEL,
+    ID_HELP,
+    /* ------------ Display dialog box ---------- */
+    ID_BORDER,
+    ID_TITLE,
+    ID_STATUSBAR,
+    ID_TEXTURE,
+    ID_COLOR,
+    ID_MONO,
+    ID_REVERSE,
+    /* ---------- Print Select dialog box --------- */
+    ID_PRINTERPORT,
+    ID_LEFTMARGIN,
+    ID_RIGHTMARGIN,
+    ID_TOPMARGIN,
+    ID_BOTTOMMARGIN,
+    /* ----------- InputBox dialog box ------------ */
+    ID_INPUTTEXT
 };
 
 /* ----------- keys.h ------------ */
@@ -465,8 +481,8 @@ enum commands {
 #define LCTRLKEY 0x100
 
 struct keys {
-	int keycode;
-	char *keylabel;
+    int keycode;
+    char *keylabel;
 };
 extern struct keys keys[];
 
@@ -475,9 +491,9 @@ extern struct keys keys[];
 /* ------------------------------------------------------ */
 
 /* Contains core definitions necessary for the API
- * but that should NOT be used or modified by the
- * developer
- */
+* but that should NOT be used or modified by the
+* developer
+*/
 
 /* /////// INCLUDE //////////////////////////////////////// */
 
@@ -498,14 +514,14 @@ extern struct keys keys[];
 /* /////// MODULE ///////////////////////////////////////// */
 
 typedef struct ModuleDesc {
-	char *Description;
-	int Ver_maj;
-	int Ver_min;
-	int Ver_rel;
-	int Ver_patch;
-	char *Copyright;
-	char *License;
-	char *AboutComment;
+    char *Description;
+    int Ver_maj;
+    int Ver_min;
+    int Ver_rel;
+    int Ver_patch;
+    char *Copyright;
+    char *License;
+    char *AboutComment;
 } MODULE;
 
 extern char VerStr[64];
@@ -518,7 +534,7 @@ extern char VerStr[64];
 typedef enum window_class {
 #define ClassDef(c, b, p, a) c,
 #include "textUI_classes.h"
-	CLASSCOUNT
+    CLASSCOUNT
 } CLASS;
 
 /* /////// DATA TYPES /////////////////////////////////// */
@@ -528,19 +544,19 @@ typedef long PARAM;
 typedef PARAM UCOMMAND;
 
 /* Above there goes the definition of:
-   MODULE            A programming unit (Program or Library)
-   HWND              Handle to a window
-   CLASS             Class (number)
-   ColorScheme       A color combination for the UI
-   VideoResolution   A screen mode resolution
- */
+MODULE            A programming unit (Program or Library)
+HWND              Handle to a window
+CLASS             Class (number)
+ColorScheme       A color combination for the UI
+VideoResolution   A screen mode resolution
+*/
 
 /* ---- types of vectors that can be in a picture box ------- */
 enum VectTypes { VECTOR,
-	SOLIDBAR,
-	HEAVYBAR,
-	CROSSBAR,
-	LIGHTBAR };
+    SOLIDBAR,
+    HEAVYBAR,
+    CROSSBAR,
+    LIGHTBAR };
 
 /* ------------ menu.h ------------- */
 
@@ -549,29 +565,29 @@ enum VectTypes { VECTOR,
 #define MAXCASCADES 3 /* nesting level of cascaded menus */
 
 /* ----------- popdown menu selection structure
-	   one for each selection on a popdown menu --------- */
+    one for each selection on a popdown menu --------- */
 struct PopDown {
-	char *SelectionTitle; /* title of the selection */
-	int ActionId; /* the command executed */
-	int Accelerator; /* the accelerator key */
-	int Attrib; /* INACTIVE | CHECKED | TOGGLE | CASCADED*/
-	char *help; /* Help mnemonic */
+    char *SelectionTitle; /* title of the selection */
+    int ActionId; /* the command executed */
+    int Accelerator; /* the accelerator key */
+    int Attrib; /* INACTIVE | CHECKED | TOGGLE | CASCADED*/
+    char *help; /* Help mnemonic */
 };
 
 /* ----------- popdown menu structure one for each popdown menu on the menu bar -------- */
 typedef struct Menu {
-	char *Title; /* title on the menu bar       */
-	void (*PrepMenu)(void *, struct Menu *); /* function  */
-	char *StatusText; /* text for the status bar     */
-	int CascadeId; /* command id of cascading selection */
-	int Selection; /* most recent selection       */
-	struct PopDown Selections[MAXSELECTIONS + 1];
+    char *Title; /* title on the menu bar       */
+    void (*PrepMenu)(void *, struct Menu *); /* function  */
+    char *StatusText; /* text for the status bar     */
+    int CascadeId; /* command id of cascading selection */
+    int Selection; /* most recent selection       */
+    struct PopDown Selections[MAXSELECTIONS + 1];
 } MENU;
 
 /* ----- one for each menu bar ----- */
 typedef struct MenuBar {
-	int ActiveSelection;
-	MENU PullDown[MAXPULLDOWNS + 1];
+    int ActiveSelection;
+    MENU PullDown[MAXPULLDOWNS + 1];
 } MBAR;
 
 /* -------- menu selection attributes -------- */
@@ -598,28 +614,28 @@ int MenuWidth(struct PopDown *);
 
 /* -------- dialog box and control window structure ------- */
 typedef struct {
-	char *title; /* window title         */
-	int x, y; /* relative coordinates */
-	int h, w; /* size                 */
+    char *title; /* window title         */
+    int x, y; /* relative coordinates */
+    int h, w; /* size                 */
 } DIALOGWINDOW;
 
 /* ------ one of these for each control window ------- */
 typedef struct {
-	DIALOGWINDOW dwnd;
-	CLASS cls; /* LISTBOX, BUTTON, etc */
-	char *itext; /* initialized text     */
-	UCOMMAND command; /* command code         */
-	char *help; /* help mnemonic        */
-	BOOL isetting; /* initially ON or OFF  */
-	BOOL setting; /* ON or OFF            */
-	void *wnd; /* window handle        */
+    DIALOGWINDOW dwnd;
+    CLASS cls; /* LISTBOX, BUTTON, etc */
+    char *itext; /* initialized text     */
+    UCOMMAND command; /* command code         */
+    char *help; /* help mnemonic        */
+    BOOL isetting; /* initially ON or OFF  */
+    BOOL setting; /* ON or OFF            */
+    void *wnd; /* window handle        */
 } CTLWINDOW;
 
 /* --------- one of these for each dialog box ------- */
 typedef struct {
-	char *HelpName;
-	DIALOGWINDOW dwnd;
-	CTLWINDOW ctl[MAXCONTROLS + 1];
+    char *HelpName;
+    DIALOGWINDOW dwnd;
+    CTLWINDOW ctl[MAXCONTROLS + 1];
 } DBOX;
 
 /* -------- macros for dialog box resource compile -------- */
@@ -627,12 +643,12 @@ typedef struct {
 #define DB_TITLE(ttl, x, y, h, w) { ttl, x, y, h, w }, {
 #define CONTROL(ty, tx, x, y, h, w, c) { { NULL, x, y, h, w }, ty, ((ty == EDITBOX || ty == COMBOBOX) ? NULL : tx), c, #c, (ty == BUTTON ? ON : OFF), OFF, NULL },
 #define ENDDB    \
-	{            \
-		{ NULL } \
-	}            \
-	}            \
-	}            \
-	;
+    {            \
+        { NULL } \
+    }            \
+    }            \
+    }            \
+    ;
 
 #define tCancel " Cancel "
 #define tOk "   OK   "
@@ -642,106 +658,106 @@ typedef struct {
 /* /////// WINDOW ///////////////////////////////////////// */
 
 enum Condition {
-	ISRESTORED,
-	ISMINIMIZED,
-	ISMAXIMIZED,
-	ISCLOSING
+    ISRESTORED,
+    ISMINIMIZED,
+    ISMAXIMIZED,
+    ISCLOSING
 };
 
 typedef struct window {
-	CLASS cls; /* window class                  */
-	char *title; /* window title                  */
-	int (*wndproc)(struct window *, MESSAGE, PARAM, PARAM);
-	/* ---------------- window dimensions ----------------- */
-	RECT rc; /* window coordinates
-							  (0/0 to 79/24)  */
-	int ht, wd; /* window height and width       */
-	RECT RestoredRC; /* restored condition rect       */
-	/* ----------------- window colors -------------------- */
-	char WindowColors[4][2];
-	/* -------------- linked list pointers ---------------- */
-	struct window *parent; /* parent window            */
-	struct window *firstchild; /* first child this parent  */
-	struct window *lastchild; /* last child this parent   */
-	struct window *nextsibling; /* next sibling             */
-	struct window *prevsibling; /* previous sibling         */
+    CLASS cls; /* window class                  */
+    char *title; /* window title                  */
+    int (*wndproc)(struct window *, MESSAGE, PARAM, PARAM);
+    /* ---------------- window dimensions ----------------- */
+    RECT rc; /* window coordinates
+                            (0/0 to 79/24)  */
+    int ht, wd; /* window height and width       */
+    RECT RestoredRC; /* restored condition rect       */
+    /* ----------------- window colors -------------------- */
+    char WindowColors[4][2];
+    /* -------------- linked list pointers ---------------- */
+    struct window *parent; /* parent window            */
+    struct window *firstchild; /* first child this parent  */
+    struct window *lastchild; /* last child this parent   */
+    struct window *nextsibling; /* next sibling             */
+    struct window *prevsibling; /* previous sibling         */
 #if CLASSIC_WINDOW_NUMBERING /* if enabled, select 0.7c style window list */
-	/* no extra work */
+    /* no extra work */
 #else /* 0.7c: window list does not depend on stacking */
-	struct window *numberonechild; /* first child for list  */
-	struct window *nextnumberedsibling; /* next sibling for list */
+    struct window *numberonechild; /* first child for list  */
+    struct window *nextnumberedsibling; /* next sibling for list */
 #endif
 
-	struct window *childfocus; /* child that ha(s/d) focus */
-	int attrib; /* Window attributes        */
-	char *videosave; /* video save buffer        */
-	enum Condition condition; /* Restored, Maximized,
-								 Minimized, Closing       */
-	enum Condition oldcondition; /* previous condition       */
-	BOOL wasCleared;
-	int restored_attrib; /* attributes when restored */
-	void *extension; /* menus, dialogs, documents, etc */
-	void *wrapper; /* used by C++ wrapper class */
-	struct window *PrevMouse; /* previous mouse capture   */
-	struct window *PrevKeyboard; /* previous keyboard capture*/
-	struct window *PrevClock; /* previous clock capture   */
-	struct window *MenuBarWnd; /* menu bar                 */
-	struct window *StatusBar; /* status bar               */
-	int isHelping; /* > 0 when help is being displayed */
-	/* ----------------- text box fields ------------------ */
-	int wlines; /* number of lines of text              */
-	int wtop; /* text line that is on the top display */
-	char *text; /* window text                     */
-	unsigned int textlen; /* text length                   */
-	int wleft; /* left position in window viewport     */
-	int textwidth; /* width of longest line in textbox     */
-	int BlkBegLine; /* beginning line of marked block       */
-	int BlkBegCol; /* beginning column of marked block     */
-	int BlkEndLine; /* ending line of marked block          */
-	int BlkEndCol; /* ending column of marked block        */
-	int HScrollBox; /* position of horizontal scroll box    */
-	int VScrollBox; /* position of vertical scroll box      */
-	unsigned int *TextPointers; /* -> list of line offsets  */
-	/* ----------------- list box fields ------------------ */
-	int selection; /* current selection                    */
-	BOOL AddMode; /* adding extended selections mode      */
-	int AnchorPoint; /* anchor point for extended selections */
-	int SelectCount; /* count of selected items              */
-	/* ----------------- edit box fields ------------------ */
-	int CurrCol; /* Current column                     */
-	int CurrLine; /* Current line                       */
-	int WndRow; /* Current window row                 */
-	BOOL TextChanged; /* TRUE if text has changed           */
-	BOOL protect; /* TRUE to display '*'                */
-	char *DeletedText; /* for undo                           */
-	unsigned DeletedLength; /* Length of deleted field      */
-	BOOL InsertMode; /* TRUE or FALSE for text insert     */
-	BOOL WordWrapMode; /* TRUE or FALSE for word wrap       */
-	unsigned int MaxTextLength; /* maximum text length      */
-	/* ---------------- dialog box fields ----------------- */
-	int ReturnCode; /* return code from a dialog box */
-	BOOL Modal; /* True if a modeless dialog box */
-	CTLWINDOW *ct; /* control structure             */
-	struct window *dfocus; /* control window that has focus */
-	/* -------------- popdownmenu fields ------------------ */
-	MENU *mnu; /* points to menu structure         */
-	MBAR *holdmenu; /* previous active menu                 */
-	struct window *oldFocus;
-	/* -------------- status bar fields ------------------- */
-	BOOL TimePosted; /* True if time has been posted        */
+    struct window *childfocus; /* child that ha(s/d) focus */
+    int attrib; /* Window attributes        */
+    char *videosave; /* video save buffer        */
+    enum Condition condition; /* Restored, Maximized,
+                                Minimized, Closing       */
+    enum Condition oldcondition; /* previous condition       */
+    BOOL wasCleared;
+    int restored_attrib; /* attributes when restored */
+    void *extension; /* menus, dialogs, documents, etc */
+    void *wrapper; /* used by C++ wrapper class */
+    struct window *PrevMouse; /* previous mouse capture   */
+    struct window *PrevKeyboard; /* previous keyboard capture*/
+    struct window *PrevClock; /* previous clock capture   */
+    struct window *MenuBarWnd; /* menu bar                 */
+    struct window *StatusBar; /* status bar               */
+    int isHelping; /* > 0 when help is being displayed */
+    /* ----------------- text box fields ------------------ */
+    int wlines; /* number of lines of text              */
+    int wtop; /* text line that is on the top display */
+    char *text; /* window text                     */
+    unsigned int textlen; /* text length                   */
+    int wleft; /* left position in window viewport     */
+    int textwidth; /* width of longest line in textbox     */
+    int BlkBegLine; /* beginning line of marked block       */
+    int BlkBegCol; /* beginning column of marked block     */
+    int BlkEndLine; /* ending line of marked block          */
+    int BlkEndCol; /* ending column of marked block        */
+    int HScrollBox; /* position of horizontal scroll box    */
+    int VScrollBox; /* position of vertical scroll box      */
+    unsigned int *TextPointers; /* -> list of line offsets  */
+    /* ----------------- list box fields ------------------ */
+    int selection; /* current selection                    */
+    BOOL AddMode; /* adding extended selections mode      */
+    int AnchorPoint; /* anchor point for extended selections */
+    int SelectCount; /* count of selected items              */
+    /* ----------------- edit box fields ------------------ */
+    int CurrCol; /* Current column                     */
+    int CurrLine; /* Current line                       */
+    int WndRow; /* Current window row                 */
+    BOOL TextChanged; /* TRUE if text has changed           */
+    BOOL protect; /* TRUE to display '*'                */
+    char *DeletedText; /* for undo                           */
+    unsigned DeletedLength; /* Length of deleted field      */
+    BOOL InsertMode; /* TRUE or FALSE for text insert     */
+    BOOL WordWrapMode; /* TRUE or FALSE for word wrap       */
+    unsigned int MaxTextLength; /* maximum text length      */
+    /* ---------------- dialog box fields ----------------- */
+    int ReturnCode; /* return code from a dialog box */
+    BOOL Modal; /* True if a modeless dialog box */
+    CTLWINDOW *ct; /* control structure             */
+    struct window *dfocus; /* control window that has focus */
+    /* -------------- popdownmenu fields ------------------ */
+    MENU *mnu; /* points to menu structure         */
+    MBAR *holdmenu; /* previous active menu                 */
+    struct window *oldFocus;
+    /* -------------- status bar fields ------------------- */
+    BOOL TimePosted; /* True if time has been posted        */
 #ifdef INCLUDE_PICTUREBOX
-	/* ------------- picture box fields ------------------- */
-	int VectorCount; /* number of vectors in vector list   */
-	void *VectorList; /* list of picture box vectors        */
+    /* ------------- picture box fields ------------------- */
+    int VectorCount; /* number of vectors in vector list   */
+    void *VectorList; /* list of picture box vectors        */
 #endif
 } *WINDOW;
 
 typedef WINDOW HWND;
 
 typedef struct classdefs {
-	CLASS base; /* base window class */
-	int (*wndproc)(struct window *, MESSAGE, PARAM, PARAM);
-	int attrib;
+    CLASS base; /* base window class */
+    int (*wndproc)(struct window *, MESSAGE, PARAM, PARAM);
+    int attrib;
 } CLASSDEFS;
 
 extern CLASSDEFS classdefs[];
@@ -752,34 +768,36 @@ enum messages {
 #undef DFlatMsg
 #define DFlatMsg(m) m,
 #include "textUI_msg.h"
-	MESSAGECOUNT
+    MESSAGECOUNT
 };
 
 /* /////// VIDEO RESOLUTION /////////////////////////////// */
 
 typedef struct videoresolution {
-	unsigned int HRes;
-	unsigned int VRes;
-	char Description[31];
+    unsigned int HRes;
+    unsigned int VRes;
+    char Description[31];
 } VideoResolution;
 
 /* /////// COLOR SCHEME /////////////////////////////////// */
 
 typedef struct colorscheme {
-	BOOL isMonoScheme;
-	unsigned char index;
-	unsigned char clrArray[CLASSCOUNT][4][2];
+    BOOL isMonoScheme;
+    unsigned char index;
+    unsigned char clrArray[CLASSCOUNT][4][2];
 } ColorScheme;
 
 enum colortypes {
-	STD_COLOR,
-	SELECT_COLOR,
-	FRAME_COLOR,
-	HILITE_COLOR
+    STD_COLOR,
+    SELECT_COLOR,
+    FRAME_COLOR,
+    HILITE_COLOR,
 };
 
-enum grounds { FG,
-	BG };
+enum grounds {
+    FG,
+    BG,
+};
 
 #define ColorSchemeArraySize (CLASSCOUNT * 4 * 2)
 
@@ -790,9 +808,9 @@ int YesNoBoxProc(WINDOW, MESSAGE, PARAM, PARAM);
 int MessageBoxProc(WINDOW, MESSAGE, PARAM, PARAM);
 
 enum alignments {
-	ALIGN_LEFT,
-	ALIGN_RIGHT,
-	ALIGN_CENTER
+    ALIGN_LEFT,
+    ALIGN_RIGHT,
+    ALIGN_CENTER
 };
 
 /* ------------------------------------------------------ */
@@ -802,8 +820,8 @@ enum alignments {
 /* /////// CONSTANTS /////////////////////////////////// */
 
 /*
-   Class list:       see classes.h
-   System Messages:  see dflatmsg.h
+Class list:       see classes.h
+System Messages:  see dflatmsg.h
 */
 
 extern char *ClassNames[];
@@ -844,7 +862,9 @@ extern ColorScheme reverse;
 /* Memory allocation */
 void *DFcalloc(size_t, size_t);
 void *DFmalloc(size_t);
+void *DFalloca(size_t);
 void *DFrealloc(void *, size_t);
+void DFfree(void *);
 
 int TestCriticalError(void); /* Critical error detection */
 
@@ -853,16 +873,16 @@ BOOL SelectColorScheme(ColorScheme); /* Select color schemes */
 /* /////// SYSTEM CONFIGURATION //////////////////////// */
 
 typedef struct sysconfigtype {
-	ColorScheme VideoCurrentColorScheme; /* Read-only */
-	VideoResolution VideoCurrentResolution; /* Read-only */
-	unsigned char CountryTimeSeparator; /* Read-write */
-	unsigned char EditorTabSize; /* Read-write */
-	BOOL EditorGlobalReadOnly; /* Read-write */
+    ColorScheme VideoCurrentColorScheme; /* Read-only */
+    VideoResolution VideoCurrentResolution; /* Read-only */
+    unsigned char CountryTimeSeparator; /* Read-write */
+    unsigned char EditorTabSize; /* Read-write */
+    BOOL EditorGlobalReadOnly; /* Read-write */
 } SysConfigType;
 
 /* Please be careful and respect the read-only/write note above.
-   If you wish to modify the read-only attributes, use the given
-   functions to do so.  */
+If you wish to modify the read-only attributes, use the given
+functions to do so.  */
 extern SysConfigType SysConfig;
 
 /* /////// MESSAGING SYSTEM //////////////////////////// */
@@ -873,15 +893,16 @@ int SendMessage(HWND, MESSAGE, PARAM, PARAM);
 
 /* Multitasking */
 void ProcessMessages(void); /* once finished init, let messages flow */
-void Cooperate(void); /* momentarily process pending messages  */
+BOOL Cooperate(void); /* momentarily process pending messages  */
+void KickProgress(int ticks);
 
 /* /////// CLASSES ///////////////////////////////////// */
 
 #define BaseWndProc(cls, wnd, msg, p1, p2) \
-	(*classdefs[(classdefs[cls].base)].wndproc)(wnd, msg, p1, p2)
+    (*classdefs[(classdefs[cls].base)].wndproc)(wnd, msg, p1, p2)
 
 #define DefaultWndProc(wnd, msg, p1, p2) \
-	(classdefs[wnd->cls].wndproc == NULL) ? BaseWndProc(wnd->cls, wnd, msg, p1, p2) : (*classdefs[wnd->cls].wndproc)(wnd, msg, p1, p2)
+    (classdefs[wnd->cls].wndproc == NULL) ? BaseWndProc(wnd->cls, wnd, msg, p1, p2) : (*classdefs[wnd->cls].wndproc)(wnd, msg, p1, p2)
 
 /* /////// WINDOW METHODS ////////////////////////////// */
 
@@ -895,32 +916,20 @@ BOOL isDerivedFrom(HWND, CLASS);
 /* ------- color manipulation ------- */
 
 /* Get colors defined for a window */
-#define WndForeground(wnd) \
-	(wnd->WindowColors[STD_COLOR][FG])
-#define WndBackground(wnd) \
-	(wnd->WindowColors[STD_COLOR][BG])
-#define FrameForeground(wnd) \
-	(wnd->WindowColors[FRAME_COLOR][FG])
-#define FrameBackground(wnd) \
-	(wnd->WindowColors[FRAME_COLOR][BG])
-#define SelectForeground(wnd) \
-	(wnd->WindowColors[SELECT_COLOR][FG])
-#define SelectBackground(wnd) \
-	(wnd->WindowColors[SELECT_COLOR][BG])
-#define HighlightForeground(wnd) \
-	(wnd->WindowColors[HILITE_COLOR][FG])
-#define HighlightBackground(wnd) \
-	(wnd->WindowColors[HILITE_COLOR][BG])
+#define WndForeground(wnd) (wnd->WindowColors[STD_COLOR][FG])
+#define WndBackground(wnd) (wnd->WindowColors[STD_COLOR][BG])
+#define FrameForeground(wnd) (wnd->WindowColors[FRAME_COLOR][FG])
+#define FrameBackground(wnd) (wnd->WindowColors[FRAME_COLOR][BG])
+#define SelectForeground(wnd) (wnd->WindowColors[SELECT_COLOR][FG])
+#define SelectBackground(wnd) (wnd->WindowColors[SELECT_COLOR][BG])
+#define HighlightForeground(wnd) (wnd->WindowColors[HILITE_COLOR][FG])
+#define HighlightBackground(wnd) (wnd->WindowColors[HILITE_COLOR][BG])
 
 /* Set colors defined for a window */
-#define WindowClientColor(wnd, fg, bg) \
-	WndForeground(wnd) = fg, WndBackground(wnd) = bg
-#define WindowReverseColor(wnd, fg, bg) \
-	SelectForeground(wnd) = fg, SelectBackground(wnd) = bg
-#define WindowFrameColor(wnd, fg, bg) \
-	FrameForeground(wnd) = fg, FrameBackground(wnd) = bg
-#define WindowHighlightColor(wnd, fg, bg) \
-	HighlightForeground(wnd) = fg, HighlightBackground(wnd) = bg
+#define WindowClientColor(wnd, fg, bg) WndForeground(wnd) = fg, WndBackground(wnd) = bg
+#define WindowReverseColor(wnd, fg, bg) SelectForeground(wnd) = fg, SelectBackground(wnd) = bg
+#define WindowFrameColor(wnd, fg, bg) FrameForeground(wnd) = fg, FrameBackground(wnd) = bg
+#define WindowHighlightColor(wnd, fg, bg) HighlightForeground(wnd) = fg, HighlightBackground(wnd) = bg
 
 /* ------- window and client coords - */
 #define WindowHeight(w) ((w)->ht)
@@ -984,7 +993,8 @@ extern BOOL ClipString;
 
 BOOL CharInView(HWND, int, int);
 void PutWindowChar(HWND, int, int, int);
-void PutWindowLine(HWND, char *, int, int);
+void PutWindowLine(HWND, const char *, int, int);
+void PadWindowLine(HWND, int, int, char);
 
 /* ------- object hierarchy/MDI ----- */
 
@@ -1108,23 +1118,23 @@ void SetFocusCursor(HWND);
 HWND SliderBox(int, char *, char *);
 BOOL InputBox(HWND, char *, char *, char *, int, int);
 BOOL GenericMessage(HWND, char *, char *, int,
-		int (*)(struct window *, MESSAGE, PARAM, PARAM),
-		char *, char *, int, int, int);
+        int (*)(struct window *, MESSAGE, PARAM, PARAM),
+        char *, char *, int, int, int);
 #define TestErrorMessage(msg)                           \
-	GenericMessage(NULL, "Error", msg, 2, ErrorBoxProc, \
-			tOk, tCancel, ID_OK, ID_CANCEL, TRUE)
+    GenericMessage(NULL, "Error", msg, 2, ErrorBoxProc, \
+            tOk, tCancel, ID_OK, ID_CANCEL, TRUE)
 #define ErrorMessage(msg)                               \
-	GenericMessage(NULL, "Error", msg, 1, ErrorBoxProc, \
-			tOk, NULL, ID_OK, 0, TRUE)
+    GenericMessage(NULL, "Error", msg, 1, ErrorBoxProc, \
+            tOk, NULL, ID_OK, 0, TRUE)
 #define MessageBox(ttl, msg)                          \
-	GenericMessage(NULL, ttl, msg, 1, MessageBoxProc, \
-			tOk, NULL, ID_OK, 0, TRUE)
+    GenericMessage(NULL, ttl, msg, 1, MessageBoxProc, \
+            tOk, NULL, ID_OK, 0, TRUE)
 #define YesNoBox(msg)                                \
-	GenericMessage(NULL, NULL, msg, 2, YesNoBoxProc, \
-			tYes, tNo, ID_OK, ID_CANCEL, TRUE)
+    GenericMessage(NULL, NULL, msg, 2, YesNoBoxProc, \
+            tYes, tNo, ID_OK, ID_CANCEL, TRUE)
 #define CancelBox(wnd, msg)                               \
-	GenericMessage(wnd, "Wait...", msg, 1, CancelBoxProc, \
-			tCancel, NULL, ID_CANCEL, 0, FALSE)
+    GenericMessage(wnd, "Wait...", msg, 1, CancelBoxProc, \
+            tCancel, NULL, ID_CANCEL, 0, FALSE)
 void CloseCancelBox(void);
 HWND MomentaryMessage(char *);
 
@@ -1177,11 +1187,11 @@ extern unsigned ClipboardLength;
 /* ------------- DFlat+ Tools include ----------- */
 
 enum dftools_messages {
-	/* ------------ Legacy HelpBox dialog box ---------- */
-	ID_HELPTEXT = 5000,
-	ID_BACK,
-	ID_PREV,
-	ID_NEXT
+    /* ------------ Legacy HelpBox dialog box ---------- */
+    ID_HELPTEXT = 5000,
+    ID_BACK,
+    ID_PREV,
+    ID_NEXT
 };
 
 /* ---- Tool: INTEGRATED HELP ------------------ */
@@ -1193,41 +1203,41 @@ void UnLoadHelpFile(void);
 void LoadHelpFile(char *);
 
 /* To use it: include in your code:
-	InstallHelpProcedure (DisplayHelp);
-	LoadHelpFile( "file name containing the HELP");
+    InstallHelpProcedure (DisplayHelp);
+    LoadHelpFile( "file name containing the HELP");
 
-	The needed HUFFC.EXE and FIXHELP.EXE are also built.
+    The needed HUFFC.EXE and FIXHELP.EXE are also built.
 
-	See the FreeDOS EDIT sources to see how to create a basic help
-	file and include it within your application.
+    See the FreeDOS EDIT sources to see how to create a basic help
+    file and include it within your application.
 */
 
 /* ---- Tool: GENERIC LOGGING ------------------ */
 
 /* Within DFlat+ you can have logging routines within your code.
-   You choose the routines you want linking to different libraries.
+You choose the routines you want linking to different libraries.
 
-   Link to:
+Link to:
 
-   DDNLOG*.LIB     - To create a non-logging, minimum size version.
-   DDLOG*.LIB      - To use the legacy logging system
-   DDLOGR*.LIB     - To create a DFlat+ Logger version
+DDNLOG*.LIB     - To create a non-logging, minimum size version.
+DDLOG*.LIB      - To use the legacy logging system
+DDLOGR*.LIB     - To create a DFlat+ Logger version
 */
 
 /* Definitions specific to the legacy logging: */
 
 void MessageLog(HWND);
 /* Open a dialog on window referred by HWND, which lets you start
-   logging and choose the messages you want to log */
+logging and choose the messages you want to log */
 
 /* Definitions specific to the DFlat+ logger */
 
 /* Log levels for the DFLat+ new Logger tool */
 typedef enum {
-	LL_CRITICAL,
-	LL_ERROR,
-	LL_WARN,
-	LL_NOTIFY
+    LL_CRITICAL,
+    LL_ERROR,
+    LL_WARN,
+    LL_NOTIFY
 } log_levels;
 
 extern log_levels CurrentLogLevel; /* Current Logging level */
@@ -1240,30 +1250,30 @@ int StopLogger(void); /* Stop logging */
 void Log(log_levels, char *ModuleName, char *message);
 
 #define Log1(level, module, message, p1)       \
-	{                                          \
-		if (sprintf(logstr, message, p1) >= 0) \
-			Log(level, module, logstr);        \
-	}
+    {                                          \
+        if (sprintf(logstr, message, p1) >= 0) \
+            Log(level, module, logstr);        \
+    }
 #define Log2(level, module, message, p1, p2)       \
-	{                                              \
-		if (sprintf(logstr, message, p1, p2) >= 0) \
-			Log(level, module, logstr);            \
-	}
+    {                                              \
+        if (sprintf(logstr, message, p1, p2) >= 0) \
+            Log(level, module, logstr);            \
+    }
 #define Log3(level, module, message, p1, p2, p3)       \
-	{                                                  \
-		if (sprintf(logstr, message, p1, p2, p3) >= 0) \
-			Log(level, module, logstr);                \
-	}
+    {                                                  \
+        if (sprintf(logstr, message, p1, p2, p3) >= 0) \
+            Log(level, module, logstr);                \
+    }
 #define Log4(level, module, message, p1, p2, p3, p4)       \
-	{                                                      \
-		if (sprintf(logstr, message, p1, p2, p3, p4) >= 0) \
-			Log(level, module, logstr);                    \
-	}
+    {                                                      \
+        if (sprintf(logstr, message, p1, p2, p3, p4) >= 0) \
+            Log(level, module, logstr);                    \
+    }
 #define Log5(level, module, message, p1, p2, p3, p4, p5)       \
-	{                                                          \
-		if (sprintf(logstr, message, p1, p2, p3, p4, p5) >= 0) \
-			Log(level, module, logstr);                        \
-	}
+    {                                                          \
+        if (sprintf(logstr, message, p1, p2, p3, p4, p5) >= 0) \
+            Log(level, module, logstr);                        \
+    }
 
 /* Text strings for classes and messages */
 char *MessageText(MESSAGE msg);
@@ -1282,19 +1292,19 @@ int isLeapYear(int year);
 
 /* --------- linked list of help text collections -------- */
 struct helps {
-	char *hname;
-	char *comment;
-	long hptr;
-	int bit;
-	int hheight;
-	int hwidth;
-	int nexthlp;
-	int prevhlp;
-	void *hwnd;
-	char *PrevName;
-	char *NextName;
+    char *hname;
+    char *comment;
+    long hptr;
+    int bit;
+    int hheight;
+    int hwidth;
+    int nexthlp;
+    int prevhlp;
+    void *hwnd;
+    char *PrevName;
+    char *NextName;
 #ifdef FIXHELP
-	struct helps *NextHelp;
+    struct helps *NextHelp;
 #endif
 };
 
@@ -1304,16 +1314,16 @@ typedef unsigned int BYTECOUNTER;
 
 /* ---- Huffman tree structure for building ---- */
 struct htree {
-	BYTECOUNTER cnt; /* character frequency         */
-	int parent; /* offset to parent node       */
-	int right; /* offset to right child node  */
-	int left; /* offset to left child node   */
+    BYTECOUNTER cnt; /* character frequency         */
+    int parent; /* offset to parent node       */
+    int right; /* offset to right child node  */
+    int left; /* offset to left child node   */
 };
 
 /* ---- Huffman tree structure in compressed file ---- */
 struct htr {
-	int right; /* offset to right child node  */
-	int left; /* offset to left child node   */
+    int right; /* offset to right child node  */
+    int left; /* offset to left child node   */
 };
 
 extern struct htr *HelpTree;
@@ -1353,17 +1363,17 @@ RECT subRectangle(RECT, RECT);
 #define COUNT (1193280L / FREQUENCY)
 #define ZEROFLAG 0x40
 #define MAXSAVES 50
-#define SCREENWIDTH (getScreenWidth())
-#define SCREENHEIGHT (getScreenHeight())
+#define SCREENWIDTH (get_console_width())
+#define SCREENHEIGHT (get_console_height())
 
 #define waitforkeyboard() \
-	{}
+    {}
 #define disable()
 #define enable()
 #define harderr(vect) \
-	{}
+    {}
 #define hardretn(err) \
-	{}
+    {}
 
 /* ----- keyboard BIOS (0x16) functions -------- */
 #define READKB 0
@@ -1395,6 +1405,10 @@ void videomode(void);
 void SwapCursorStack(void);
 /* --------- screen prototpyes -------- */
 BOOL init_console(int console_width, int console_height);
+void get_console_size(int *w, int *h);
+inline static int get_console_width() { int w; get_console_size(&w, NULL); return w; }
+inline static int get_console_height() { int h; get_console_size(NULL, &h); return h; }
+void get_console_font_size(int *w, int *h);
 void clearscreen(void);
 /* ---------- mouse prototypes ---------- */
 BOOL mouse_installed(void);
@@ -1405,24 +1419,26 @@ void resetmouse(void);
 #define leftbutton() (mousebuttons() & 1)
 #define rightbutton() (mousebuttons() & 2)
 #define waitformouse()     \
-	while (mousebuttons()) \
-		;
+    while (mousebuttons()) \
+        ;
 #define set_mousetravel(p1, p2, s1, s2) \
-	{}
+    {}
 #define set_mouseposition(x, y) \
-	{}
+    {}
 #define show_mousecursor() \
-	{}
+    {}
 #define hide_mousecursor() \
-	{}
+    {}
 
 /* ------------ timer macros -------------- */
 
 /* functions only use constants in timer variables  */
 /* to identify which timer is used! So take care:   */
 /* Never manipulate timer variables directly!   -ea */
+unsigned int get_tics_from_secs(float secs);
+unsigned int get_tics_from_msecs(int msecs);
 int timed_out(int timer);
-void set_timer(int timer, int secs);
+void set_timer(int timer, float secs);
 void set_timer_ticks(int timer, int ticks);
 void disable_timer(int timer);
 int timer_running(int timer);
@@ -1458,18 +1474,17 @@ con_char_t GetVideoChar(int, int);
 void PutVideoChar(int, int, con_char_t);
 
 #define videochar(x, y) (GetVideoChar(x, y) & 255)
-#define vad(x, y) (((y) * SCREENWIDTH + (x)) * 2)
+#define vad(x, y) (((y) * SCREENWIDTH + (x)) * sizeof(con_char_t))
 #define vpeek(base, offs) (*(con_char_t *)(base + offs))
 #define vpoke(base, offs, v) (*(con_char_t *)(base + offs) = v)
 #define ismono() (video_mode == 7)
-#define istext() (video_mode < 4)
 #define clr(fg, bg) ((fg) | ((bg) << 4))
 
 /* ---------- file system ---------- */
 
 /* ----- Create unambiguous path from file spec, filling in the
-	 drive and directory if incomplete. Optionally change to
-	 the new drive and subdirectory ------ */
+    drive and directory if incomplete. Optionally change to
+    the new drive and subdirectory ------ */
 void CreatePath(char *spath, char *fspec, int InclName, int Change);
 
 /* ---------------- video.h ----------------- */
@@ -1478,7 +1493,9 @@ void getvideo(RECT, void *);
 void storevideo(RECT, void *);
 
 void wputch(WINDOW, int, int, int);
-void wputs(WINDOW, void *, int, int);
+void wputs(WINDOW, const char *, int, int);
+void wputsn(WINDOW, const char *, int, int, int);
+void wputsa(WINDOW, const char *, const char *, int, int);
 void scroll_window(WINDOW, RECT, int);
 
 /* /////// VARIABLES //////////////////////////////////// */
@@ -1524,7 +1541,7 @@ int MsgWidth(char *);
 
 /* --------- messages  -------------------- */
 BOOL init_messages(void);
-BOOL dispatch_message(void);
+BOOL dispatch_message(int *msgs_cnt);
 
 /* --------- menus  ------------------- */
 int CopyCommand(char *, const char *, int, int);

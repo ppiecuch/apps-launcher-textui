@@ -1,10 +1,10 @@
 // Reference:
 // ----------
 //  - http://www.seasip.info/Unix/PSF/Amstrad/Setfont/index.html
+//  - https://stackoverflow.com/questions/59922972/how-to-stop-echo-in-terminal-using-c
 
-#include <cstddef>
-#include <cstdint>
 #include <string.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -16,10 +16,21 @@
 #include <linux/kd.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
+#include <signal.h>
 #include <termios.h>
 #include <errno.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <numeric>
+
 #include "graphics/psf.h"
+#include "graphics/cp437.h"
+
+#include "windows/backboard.h"
 
 #include "main.h"
 
@@ -88,6 +99,7 @@ uint8_t __fb_g_pos;
 uint8_t __fb_b_pos;
 
 /* Predefined colors */
+uint32_t fb_lightred;
 uint32_t fb_red;
 uint32_t fb_darkred;
 uint32_t fb_pink;
@@ -97,6 +109,7 @@ uint32_t fb_darkorange;
 uint32_t fb_gold;
 uint32_t fb_yellow;
 uint32_t fb_violet;
+uint32_t fb_lightmagenta;
 uint32_t fb_magenta;
 uint32_t fb_darkviolet;
 uint32_t fb_indigo;
@@ -104,6 +117,7 @@ uint32_t fb_lightgreen;
 uint32_t fb_green;
 uint32_t fb_darkgreen;
 uint32_t fb_olive;
+uint32_t fb_lightcyan;
 uint32_t fb_cyan;
 uint32_t fb_lightblue;
 uint32_t fb_blue;
@@ -198,6 +212,7 @@ const char *fb_strerror(int error_code) {
 }
 
 static void fb_init_colors(void) {
+    fb_lightred = fb_make_color(255, 204, 203);
     fb_red = fb_make_color(255, 0, 0);
     fb_darkred = fb_make_color(139, 0, 0);
     fb_pink = fb_make_color(255, 192, 203);
@@ -207,6 +222,7 @@ static void fb_init_colors(void) {
     fb_gold = fb_make_color(255, 215, 0);
     fb_yellow = fb_make_color(255, 255, 0);
     fb_violet = fb_make_color(238, 130, 238);
+    fb_lightmagenta = fb_make_color(255, 66, 249);
     fb_magenta = fb_make_color(255, 0, 255);
     fb_darkviolet = fb_make_color(148, 0, 211);
     fb_indigo = fb_make_color(75, 0, 130);
@@ -214,6 +230,7 @@ static void fb_init_colors(void) {
     fb_green = fb_make_color(0, 255, 0);
     fb_darkgreen = fb_make_color(0, 100, 0);
     fb_olive = fb_make_color(128, 128, 0);
+    fb_lightcyan = fb_make_color(224, 255, 255);
     fb_cyan = fb_make_color(0, 255, 255);
     fb_lightblue = fb_make_color(173, 216, 230);
     fb_blue = fb_make_color(0, 0, 255);
@@ -248,10 +265,10 @@ int fb_set_window(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     return FB_SUCCESS;
 }
 
-inline uint32_t fb_screen_width(void) { return __fb_screen_w; }
-inline uint32_t fb_screen_height(void) { return __fb_screen_h; }
-inline uint32_t fb_win_width(void) { return __fb_win_w; }
-inline uint32_t fb_win_height(void) { return __fb_win_h; }
+uint32_t fb_screen_width(void) { return __fb_screen_w; }
+uint32_t fb_screen_height(void) { return __fb_screen_h; }
+uint32_t fb_win_width(void) { return __fb_win_w; }
+uint32_t fb_win_height(void) { return __fb_win_h; }
 
 inline void fb_draw_pixel(int x, int y, uint32_t color) {
     x += __fb_off_x;
@@ -408,7 +425,7 @@ void fb_set_default_font(fb_font_t font_id)
         fb_draw_pixel(x + (b << 3) + 0, row, arr[!(data[b] & (1 << 7))]);    \
     } while (0)
 
-void fb_draw_char(int x, int y, uint32_t fg_color, uint32_t bg_color, uint8_t c) {
+void fb_draw_char(int x, int y, uint32_t fg_color, uint32_t bg_color, uint16_t c) {
     if (!curr_font) {
         fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
         return;
@@ -454,7 +471,7 @@ void fb_draw_char(int x, int y, uint32_t fg_color, uint32_t bg_color, uint8_t c)
     }
 }
 
-void fb_draw_char_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, int yscale, uint8_t c) {
+void fb_draw_char_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, int yscale, uint16_t c) {
     if (!curr_font) {
         fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
         return;
@@ -482,7 +499,7 @@ void fb_draw_char_scaled(int x, int y, uint32_t fg, uint32_t bg, int xscale, int
             const int yoff = yscale * row;
             const uint32_t color = (d[b] & (1 << bit)) ? fg : bg;
             fb_fill_rect(x + xoff, y + yoff, xscale, yscale, color);
-            }
+        }
 }
 
 void fb_draw_string(int x, int y, uint32_t fg_color, uint32_t bg_color, const char *s) {
@@ -527,10 +544,22 @@ void fb_release_fb(void) {
         close(fbfd);
 }
 
-int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device) {
+int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device, const char *pref_font) {
     static struct fb_fix_screeninfo fb_fixinfo;
 
     int ret = FB_SUCCESS;
+
+    auto find_font = [](const char *pref) -> const font_file* {
+        if (pref) {
+            const font_file **fonts = fb_font_file_list; while (*fonts) {
+                const font_file *fnt = *fonts;
+                if (strstr(fnt->filename, pref))
+                    return fnt;
+                fonts++;
+            }
+        }
+        return nullptr;
+    };
 
     if (!fb_device)
         fb_device = DEFAULT_FB_DEVICE;
@@ -622,8 +651,14 @@ int fb_acquire_fb(uint32_t flags, const char *fb_device, const char *tty_device)
     fb_init_colors();
 
     /* Just use as default font the first one (if any) */
-    if (*fb_font_file_list)
-        fb_set_default_font((void *)*fb_font_file_list);
+    if (*fb_font_file_list) {
+        if (const font_file *fnt = find_font(pref_font)) {
+            fb_set_default_font((void *)fnt);
+        } if (const font_file *fnt = find_font("8x8")) {
+            fb_set_default_font((void *)fnt);
+        } else
+            fb_set_default_font((void *)*fb_font_file_list);
+    }
 
 out:
     if (ret != FB_SUCCESS)
@@ -699,8 +734,34 @@ int fb_get_fn_key_num(fb_key_t k) {
 
 /* Console management and high level ui */
 
+static uint32_t *con_palette[16] = {
+    /* BLACK        */ &fb_black,
+    /* BLUE         */ &fb_blue,
+    /* GREEN        */ &fb_green,
+    /* CYAN         */ &fb_cyan,
+    /* RED          */ &fb_red,
+    /* MAGENTA      */ &fb_magenta,
+    /* BROWN        */ &fb_brown,
+    /* LIGHTGRAY    */ &fb_lightgray,
+    /* DARKGRAY     */ &fb_darkgray,
+    /* LIGHTBLUE    */ &fb_lightblue,
+    /* LIGHTGREEN   */ &fb_lightgreen,
+    /* LIGHTCYAN    */ &fb_lightcyan,
+    /* LIGHTRED     */ &fb_lightred,
+    /* LIGHTMAGENTA */ &fb_lightmagenta,
+    /* YELLOW       */ &fb_yellow,
+    /* WHITE        */ &fb_white,
+};
+
+static int __fg_color = 0;
+static int __bg_color = 15;
+
 uint32_t fb_con_width(void) { return (__fb_screen_w / curr_font_w); }
-uint32_t fb_con_height(void) {  return (__fb_screen_h / curr_font_h); }
+uint32_t fb_con_height(void) { return (__fb_screen_h / curr_font_h); }
+void fb_con_set_fg_color(int fg) { __fg_color = fg; }
+int fb_con_get_fg_color(void) { return __fg_color; }
+void fb_con_set_bg_color(int bg) { __bg_color = bg; }
+int fb_con_get_bg_color(void) { return __bg_color; }
 
 struct region_t {
     int x, y;
@@ -715,6 +776,7 @@ struct line_t {
 };
 
 void _put_char(struct region_t *w, int x, int y, uint32_t ch) {
+    fb_draw_char((w->x + x) * curr_font_w , (w->y + y) *curr_font_h, *con_palette[__fg_color], *con_palette[__bg_color], ch);
 }
 
 /* Helper function for clip_line(). */
@@ -1000,7 +1062,7 @@ static void _draw_box(struct region_t *r, int x, int y, int w, int h, uint32_t c
 static int _draw_thin_box(struct region_t *r, int x, int y, int w, int h) {
     static uint32_t const ascii_chars[] =
     {
-        '-', '|', ',', '`', '.', '\''
+        '-', '|', ',', '`', '.', '\'',
     };
 
     return _draw_box(r, x, y, w, h, ascii_chars);
@@ -1011,14 +1073,40 @@ static int _draw_cp437_box(struct region_t *r, int x, int y, int w, int h) {
     static uint32_t const cp437_chars[] =
     {
         /* ─ │ ┌ └ ┐ ┘ */
-        0x2500, 0x2502, 0x250c, 0x2514, 0x2510, 0x2518
+        BOX_SLR, BOX_SUD, BOX_SDR, BOX_SUR, BOX_SDL, BOX_SUL,
     };
 
     return _draw_box(r, x, y, w, h, cp437_chars);
 }
 
-void fb_con_put_char(int x, int y, uint32_t ch) {
-    struct region_t r{0, 0, (int)fb_con_width(), (int)fb_con_height()};
+/* Draw a box on the canvas using Unicode characters. */
+static int _draw_uc_box(struct region_t *r, int x, int y, int w, int h) {
+    static uint32_t const cp437_chars[] =
+    {
+        /* ─ │ ┌ └ ┐ ┘ */
+        0x2500, 0x2502, 0x250c, 0x2514, 0x2510, 0x2518,
+    };
+
+    return _draw_box(r, x, y, w, h, cp437_chars);
+}
+
+void fb_con_put_char_attrib(int x, int y, uint32_t ch, int fg, int bg) {
+    fb_draw_char(x * curr_font_w , y *curr_font_h, *con_palette[fg], *con_palette[bg], ch);
+}
+
+void fb_con_put_char(int x, int y, uint32_t fg_color, uint32_t bg_color, uint32_t ch) {
+    fb_con_put_char_attrib(x , y, fg_color, bg_color, ch);
+}
+
+void fb_con_draw_string(int x, int y, uint32_t fg_color, uint32_t bg_color, const char *s) {
+    if (!curr_font) {
+        fprintf(stderr, "[fblib] ERROR: no font currently selected\n");
+        return;
+    }
+
+    for (; *s; s++, x += curr_font_w) {
+        fb_draw_char(x, y, fg_color, bg_color, *s);
+    }
 }
 
 void fb_con_draw_line(int x1, int y1, int x2, int y2, uint32_t ch) {
@@ -1027,39 +1115,181 @@ void fb_con_draw_line(int x1, int y1, int x2, int y2, uint32_t ch) {
 
 void fb_con_draw_box(int x, int y, int w, int h) {
     struct region_t r{0, 0, (int)fb_con_width(), (int)fb_con_height()};
-    _draw_thin_box(&r, x, y, w, h);
+    _draw_cp437_box(&r, x, y, w, h);
 }
 
 /* GUI elements */
 
+static std::string format_string(const char* fmt, va_list ap) {
+    std::string message;
+    va_list ap_copy;
+    va_copy(ap_copy, ap);
+    size_t len = vsnprintf(0, 0, fmt, ap_copy);
+    message.resize(len + 1); // need space for NUL
+    vsnprintf(&message[0], len + 1,fmt, ap);
+    message.resize(len); // remove the NUL
+    return message;
+}
+
+static std::string format_string(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    std::string tmp = format_string(fmt, args);
+    va_end(args);
+    return tmp;
+}
+
+static std::vector<std::string> split_string_by_newline(const std::string &str) {
+    auto result = std::vector<std::string>{};
+    auto ss = std::stringstream{str};
+    for (std::string line; std::getline(ss, line, '\n');)
+        result.push_back(line);
+    return result;
+}
+
+std::vector<std::string> split_string_at_length(std::string str, const std::string delimiters, size_t limit) {
+    std::vector<std::string> lines;
+    std::string current_line;
+    size_t pos = 0, current_length = 0;
+    while ((pos = str.find_first_of(delimiters)) != std::string::npos) {
+        std::string token = str.substr(0, pos + 1); // Include the delimiter in the token
+        if (current_length + token.length() > limit) {
+            if (!current_line.empty()) {
+                lines.push_back(current_line);
+                current_line.clear();
+                current_length = 0;
+            }
+        }
+        current_line += token, current_length += token.length();
+        str.erase(0, pos + 1);
+    }
+    if (!str.empty()) { // Add the remaining part of the string
+        if (current_length + str.length() > limit && !current_line.empty()) {
+            lines.push_back(current_line);
+            current_line.clear();
+        }
+        current_line += str;
+    }
+    if (!current_line.empty())
+        lines.push_back(current_line);
+    return lines;
+}
+
+std::vector<std::string> split_string(std::string str, const std::string delimeters) {
+    std::vector<std::string> split = {};
+    size_t pos = 0;
+    while ((pos = str.find_first_of(delimeters)) != std::string::npos) {
+        std::string token = str.substr(0, pos);
+        if (token.length() > 0)
+            split.push_back(token);
+        str.erase(0, pos + delimeters.length());
+    }
+    if (!str.empty())
+        split.push_back(str);
+    return split;
+}
+
+std::string wrap_string_at_length(std::string str, const std::string delimiters, size_t limit) {
+    const auto lines = split_string_at_length(str, delimiters, limit);
+    return std::accumulate(lines.begin(), lines.end(), std::string("\n"));
+}
+
 void alert(const char *msg) {
+    fb_con_draw_box(4, 4, 10, 10);
 }
 
 void fatal(const char *msg) {
     fb_con_draw_box(4, 4, 10, 10);
 }
 
+void fatal_exit(const char *fmt, va_list ap) {
+    std::string msg = format_string(fmt, ap);
+    fatal(msg.c_str());
+    exit(1);
+}
+
+void fatal_exit(const char *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  fatal_exit(fmt, args);
+  va_end(args);
+}
+
 /// MAIN RUN
+
+static bool running = true;
+static struct termios start_tty;
+
+void cleanup(void) {
+    console_clear();
+    console_alt_exit();
+    tcsetattr(STDOUT_FILENO, TCSAFLUSH, &start_tty);
+}
+
+void signal_handler(int signal) {
+    switch (signal) {
+        case SIGINT:
+        case SIGTERM:
+            running = false;
+            break;
+        case SIGSEGV:
+            cleanup();
+            exit(EXIT_FAILURE);
+            break;
+    }
+
+    return;
+}
+
 
 int main(int argc, char **argv) {
     int rc;
 
-    if ((rc = fb_acquire_fb(FB_FL_NO_TTY_KD_GRAPHICS, NULL, NULL)) != FB_SUCCESS) {
+    if ((rc = fb_acquire_fb(FB_FL_NO_TTY_KD_GRAPHICS, NULL, NULL, "8x12")) != FB_SUCCESS) {
         fprintf(stderr, "fb_acquire_fb() failed: %s\n", fb_strerror(rc));
         return 1;
     }
 
-    uint32_t w = fb_screen_width();
-    uint32_t h = fb_screen_height();
-    uint32_t rect_w = w / 2;
-    uint32_t rect_h = h / 2;
+    // console setup
 
-    fb_clear_screen(fb_black); /* Paint the whole screen in black */
-    fb_draw_string(10, 10, fb_white, fb_black, "Press ENTER to quit"); /* Draw some text on-screen */
-    fb_draw_rect(w / 2 - rect_w / 2, h / 2 - rect_h / 2, rect_w, rect_h, fb_red); /* Draw a red rectangle at the center of the screen */
+    console_alt_enter();
+    cursor_hide();
 
-    getchar();
+    tcgetattr(STDIN_FILENO, &start_tty);
+    struct termios run_tty = start_tty;
+    run_tty.c_iflag &= (~ICRNL) & (~IXON);
+    run_tty.c_lflag &= (~ICANON) & (~ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &run_tty);
+
+    FILE *echo = freopen( "echo.log", "w", stdout ); // send output to log file
+    if (!echo)
+        FATAL("Cannot reopen output stream");
+
+    // setup signals and exit cleanup
+
+    struct sigaction sig;
+    sig.sa_handler = signal_handler;
+    sig.sa_flags = 0;
+    sigaction(SIGTERM, &sig, NULL);
+    sigaction(SIGINT, &sig, NULL);
+    sigaction(SIGSEGV, &sig, NULL);
+
+    atexit(cleanup);
+
+    BackboardWindow app;
+    app.resize(); // ready
+
+    while(not app.quit() && running) {
+        app.update();
+    }
+
+    if (!freopen("CON", "w", stdout))
+        FATAL("Cannot restore output stream");
+
     fb_release_fb();
+    console_alt_exit();
+
+    fclose(echo);
 
     return 0;
 }

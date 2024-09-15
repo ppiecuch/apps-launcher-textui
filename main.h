@@ -2,12 +2,32 @@
 #define MAIN_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 # define EXTERN_C extern "C"
 #else
 # define EXTERN_C
 #endif
+
+/* Ascii commands */
+
+#define ASCII_DELIMITER '\t'
+
+static inline void puts_no_eol(const char* s) {
+    while (*s)
+        putchar(*s++);
+    fflush(stdout);
+}
+
+#define console_clear() puts_no_eol("\033[1;1H\033[2J")
+#define console_alt_enter() puts_no_eol("\033[?1049h")
+#define console_alt_exit() puts_no_eol("\033[?1049l")
+
+#define cursor_reset() puts_no_eol("\033[0;0H")
+#define cursor_hide() puts_no_eol("\033[?25l")
+#define cursor_show() puts_no_eol("\033[?25h")
+#define cursor_home() puts_no_eol("\033[H")
 
 /* Low-level frambuffer management */
 
@@ -43,7 +63,13 @@ EXTERN_C uint32_t fb_screen_height(void);
 EXTERN_C uint32_t fb_con_width(void);
 EXTERN_C uint32_t fb_con_height(void);
 
+EXTERN_C void fb_con_set_fg_color(int fg);
+EXTERN_C int fb_con_get_fg_color(void);
+EXTERN_C void fb_con_set_bg_color(int bg);
+EXTERN_C int fb_con_get_bg_color(void);
+
 EXTERN_C void fb_con_put_char(int x, int y, uint32_t ch);
+EXTERN_C void fb_con_put_char_attrib(int x, int y, uint32_t ch, int fg, int bg);
 EXTERN_C void fb_con_draw_line(int x1, int y1, int x2, int y2, uint32_t ch);
 EXTERN_C void fb_con_draw_box(int x, int y, int w, int h);
 
@@ -96,5 +122,7 @@ extern fb_key_t *fb_int_fn_key_sequences;
 
 EXTERN_C void alert(const char *msg);
 EXTERN_C void fatal(const char *msg);
+
+#define FATAL(fmt, ...) fatal_exit("[%s:%d]\t" fmt "\n", __FUNCTION__, __LINE__,  ##__VA_ARGS__)
 
 #endif // MAIN_H

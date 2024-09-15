@@ -536,6 +536,79 @@ static void SelectTitle(WINDOW wnd)
 
 #endif
 
+/* ------------ barchart.c ----------- */
+
+#define BCHEIGHT 12
+#define BCWIDTH 44
+#define COLWIDTH 4
+
+static WINDOW Bwnd;
+
+/* ------- project schedule array ------- */
+static struct ProjChart {
+    char *prj;
+    int start, stop;
+} projs[] = {
+    {"Center St", 0,3},
+    {"City Hall", 0,5},
+    {"Rt 395   ", 1,4},
+    {"Sky Condo", 2,3},
+    {"Out Hs   ", 0,4},
+    {"Bk Palace", 1,5}
+};
+
+static char *Title =  "              PROJECT SCHEDULE";
+static char *Months = "           Jan Feb Mar Apr May Jun";
+
+static int BarChartProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
+{
+    switch (msg)    {
+        case COMMAND:
+            if ((int)p1 == ID_HELP)    {
+                DisplayHelp(wnd, "BarChart");
+                return TRUE;
+            }
+            break;
+        case CLOSE_WINDOW:
+            Bwnd = NULL;
+            break;
+        default:
+            break;
+    }
+    return DefaultWndProc(wnd, msg, p1, p2);
+}
+
+void BarChart(WINDOW pwnd)
+{
+    int pct = sizeof projs / sizeof(struct ProjChart);
+    int i;
+
+    if (Bwnd == NULL)    {
+        Bwnd = CreateWindow(PICTUREBOX,
+                    "BarChart",
+                    -1, -1, BCHEIGHT, BCWIDTH,
+                    NULL, pwnd, BarChartProc,
+                    SHADOW     |
+                    CONTROLBOX |
+                    MOVEABLE   |
+                    HASBORDER
+        );
+        SendMessage(Bwnd, ADDTEXT, (PARAM) Title, 0);
+        SendMessage(Bwnd, ADDTEXT, (PARAM) "", 0);
+        for (i = 0; i < pct; i++) {
+            SendMessage(Bwnd,ADDTEXT,(PARAM)projs[i].prj,0);
+            DrawBar(Bwnd, SOLIDBAR+(i%4),
+                11+projs[i].start*COLWIDTH, 2+i,
+                (1 + projs[i].stop-projs[i].start) * COLWIDTH,
+                TRUE);
+        }
+        SendMessage(Bwnd, ADDTEXT, (PARAM) "", 0);
+        SendMessage(Bwnd, ADDTEXT, (PARAM) Months, 0);
+        DrawBox(Bwnd, 10, 1, pct+2, 25);
+    }
+    SendMessage(Bwnd, SETFOCUS, TRUE, 0);
+}
+
 /* ----------- box.c ------------ */
 
 int BoxProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
@@ -586,7 +659,7 @@ void ButtonPaintMsg(WINDOW wnd, CTLWINDOW *ct, RECT *rc)
             CopyCommand(txt+strlen(txt),ct->itext,!ct->setting,WndBackground(wnd));
             SendMessage(wnd, CLEARTEXT, 0, 0);
             SendMessage(wnd, ADDTEXT, (PARAM) txt, 0);
-            free(txt);
+            DFfree(txt);
         }
         /* --------- write the button's text ------- */
         WriteTextLine(wnd, rc, 0, wnd == inFocus);
@@ -722,7 +795,7 @@ void CopyToClipboard(WINDOW wnd)
 void ClearClipboard(void)
 {
     if (Clipboard != NULL)  {
-        free(Clipboard);
+        DFfree(Clipboard);
         Clipboard = NULL;
     }
 }
@@ -854,7 +927,7 @@ int ListProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
             return TRUE;
         case CLOSE_WINDOW:
             if (wnd->ct != NULL)
-                free(wnd->ct);
+                DFfree(wnd->ct);
             wnd->ct = NULL;
             break;
         default:
@@ -1356,7 +1429,7 @@ void beep(void)
 /* -------- get the video mode and page from BIOS -------- */
 void videomode(void)
 {
-    video_mode = -1;
+    video_mode = 8;
 }
 
 /* ------ position the cursor ------ */
@@ -1605,6 +1678,20 @@ void *DFrealloc(void *block, size_t size)
         AllocationError();
     return rtn;
 }
+
+void *DFalloca(size_t size)
+{
+    void *rtn = alloca(size);
+    if (size && rtn == NULL)
+        AllocationError();
+    return rtn;
+}
+
+void DFfree(void *block)
+{
+    free(block);
+}
+
 /* ----------------- dialbox.c -------------- */
 
 static PARAM inFocusCommand(DBOX *);
@@ -1627,14 +1714,14 @@ void ClearDialogBoxes(void)
         CTLWINDOW *ct = (*(dbs+i))->ctl;
         while (ct->cls)    {
             if ((ct->cls == EDITBOX || ct->cls == TEXTBOX || ct->cls == COMBOBOX) && ct->itext != NULL) {
-                free(ct->itext);
+                DFfree(ct->itext);
                 ct->itext = NULL;
             }
             ct++;
         }
     }
     if (dbs != NULL) {
-        free(dbs);
+        DFfree(dbs);
         dbs = NULL;
     }
     dbct = 0;
@@ -1884,7 +1971,7 @@ BOOL DialogBox(WINDOW wnd, DBOX *db, BOOL Modal,
     if (Modal)    {
         SendMessage(DialogWnd, CAPTURE_MOUSE, 0, 0);
         SendMessage(DialogWnd, CAPTURE_KEYBOARD, 0, 0);
-        while (dispatch_message())
+        while (dispatch_message(NULL))
             ;
         rtn = DialogWnd->ReturnCode == ID_OK;
         SendMessage(DialogWnd, RELEASE_MOUSE, 0, 0);
@@ -1988,7 +2075,7 @@ void SetDlgTextString(DBOX *db, UCOMMAND cmd, char *text, CLASS cls)
             if (ct->cls == TEXT)
                 ct->itext = "";
             else 	{
-                free(ct->itext);
+                DFfree(ct->itext);
                 ct->itext = NULL;
             }
         }
@@ -2530,9 +2617,9 @@ static BOOL BuildList(WINDOW wnd, char *fspec, BOOL dirs)
             /* ---- send sorted list to list box ---- */
             for (j = 0; j < i; j++)    {
                 SendMessage(lwnd,ADDTEXT,(PARAM)dirlist[j],0);
-                free(dirlist[j]);
+                DFfree(dirlist[j]);
             }
-            free(dirlist);
+            DFfree(dirlist);
         }
         SendMessage(lwnd, SHOW_WINDOW, 0, 0);
     }
@@ -3396,7 +3483,7 @@ static int EBKeyboardMsg(WINDOW wnd, PARAM p1, PARAM p2)
 #ifdef FANCY_CTRL_P
             SendMessage(GetParent(wnd), ADDSTATUS, (PARAM) "^P: Press any key for verbatim insertion.", 0);
             while (!keyhit())
-                dispatch_message();	/* let (nested!) messages flow */
+                dispatch_message(NULL);	/* let (nested!) messages flow */
 #endif	        /* *** if this ever crashes, remove the dispatch_message() call! *** */
             c = getkey() & 0xff;	/* not elegant, of course! */
             p2 = SYSRQKEY;		/* magic shift status */
@@ -3531,7 +3618,7 @@ static void UndoCmd(WINDOW wnd)
 {
     if (wnd->DeletedText != NULL)    {
         PasteText(wnd, wnd->DeletedText, wnd->DeletedLength);
-        free(wnd->DeletedText);
+        DFfree(wnd->DeletedText);
         wnd->DeletedText = NULL;
         wnd->DeletedLength = 0;
         SendMessage(wnd, PAINT, 0, 0);
@@ -3698,7 +3785,7 @@ static int EBCommandMsg(WINDOW wnd, PARAM p1)
                 SendMessage(GetParent(wnd), ADDSTATUS, (PARAM) statsline, 0);
 #if 0
                 while (!keyhit())
-                    dispatch_message(); /* let (nested!) messages flow */
+                    dispatch_message(NULL); /* let (nested!) messages flow */
 #endif
             }
             return TRUE;
@@ -3714,12 +3801,12 @@ static int EBCloseWindowMsg(WINDOW wnd, PARAM p1, PARAM p2)
     int rtn;
     SendMessage(NULL, HIDE_CURSOR, 0, 0);
     if (wnd->DeletedText != NULL) {
-        free(wnd->DeletedText);
+        DFfree(wnd->DeletedText);
         wnd->DeletedText = NULL;
     }
     rtn = BaseWndProc(EDITBOX, wnd, CLOSE_WINDOW, p1, p2);
     if (wnd->text != NULL) {
-        free(wnd->text);
+        DFfree(wnd->text);
         wnd->text = NULL;
     }
     return rtn;
@@ -3737,7 +3824,7 @@ int EditBoxProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
         case SETTEXT:
             return EBSetTextMsg(wnd, p1);
         case CLEARTEXT:
-        return EBClearTextMsg(wnd);
+            return EBClearTextMsg(wnd);
         case GETTEXT:
             return EBGetTextMsg(wnd, p1, p2);
         case SETTEXTLENGTH:
@@ -4389,12 +4476,12 @@ void LoadHelpFile(char *fname)
 void UnLoadHelpFile(void)
 {
     for (int i = 0; i < HelpCount; i++)	{
-        free((FirstHelp+i)->comment);
-        free((FirstHelp+i)->hname);
+        DFfree((FirstHelp+i)->comment);
+        DFfree((FirstHelp+i)->hname);
     }
-    free(FirstHelp);
+    DFfree(FirstHelp);
     FirstHelp = NULL;
-    free(HelpTree);
+    DFfree(HelpTree);
     HelpTree = NULL;
 }
 
@@ -4407,7 +4494,7 @@ static void BuildHelpBox(WINDOW wnd)
     /* ----- read the title ----- */
     GetHelpLine(hline);
     hline[strlen(hline)-1] = '\0';
-    free(HelpBox.dwnd.title);
+    DFfree(HelpBox.dwnd.title);
     HelpBox.dwnd.title = DFmalloc(strlen(hline)+1);
     strcpy(HelpBox.dwnd.title, hline);
     /* ----- set the height and width ----- */
@@ -4510,7 +4597,7 @@ BOOL DisplayHelp(WINDOW wnd, char *Help)
             DisableButton(&HelpBox, ID_BACK);
             /* ------- display the help window ----- */
             DialogBox(NULL, &HelpBox, TRUE, HelpBoxProc);
-            free(HelpBox.dwnd.title);
+            DFfree(HelpBox.dwnd.title);
             HelpBox.dwnd.title = NULL;
             fclose(helpfp);
             helpfp = NULL;
@@ -6033,7 +6120,7 @@ static void MenuPaintMsg(WINDOW wnd)
                 SendMessage(GetParent(wnd), ADDSTATUS,
                     (PARAM)st, 0);
         }
-        free(sel);
+        DFfree(sel);
     }
 }
 
@@ -6249,7 +6336,7 @@ static void ClosePopdownMsg(WINDOW wnd, PARAM p1)
 static void MenuCloseWindowMsg(WINDOW wnd)
 {
     if (GetText(wnd) != NULL)    {
-        free(GetText(wnd));
+        DFfree(GetText(wnd));
         GetText(wnd) = NULL;
     }
     mctr = 0;
@@ -6413,12 +6500,15 @@ static char timerused[3] = {0, 0, 0}; /* 0 means off, 2 timed out */
 static long unsigned int timerend[3] = {0, 0, 0};
 static long unsigned int timerstart[3] = {0, 0, 0};
 static long biostimer[1] = {0};
-char time_string[] = "           "; /* max. length "12:34:56pm "; */
+static char time_string[] = "           "; /* max. length "12:34:56pm "; */
 
 static WINDOW Cwnd;
 
 /* More complex countdown handling by Eric Auer */
 /* Allows us to work without hooking intr. 0x08 */
+
+unsigned int get_tics_from_secs(float secs) { return (secs*182UL/10.) + 1; }
+unsigned int get_tics_from_msecs(int msecs) { return (msecs*182UL/10000.) + 1; }
 
 int timed_out(int timer) /* was: countdown 0? */
 {
@@ -6431,7 +6521,7 @@ int timed_out(int timer) /* was: countdown 0? */
     if (  (biostimer[0] < timerstart[timer])  /* wrapped? */
        || (biostimer[0] >= timerend[timer]) ) /* elapsed? */
     {
-        /* could me more exact here - the "elapsed if wrapped"  */
+        /* could be more exact here - the "elapsed if wrapped"  */
         /* logics gives early timeout at midnight. On the other */
         /* hand, we do not know the ticks-per-day BIOS limit... */
         timerused[timer] = 2; /* countdown elapsed */
@@ -6465,12 +6555,12 @@ void disable_timer(int timer) /* was: countdown = -1 */
     timerused[timer] = 0;
 }
 
-void set_timer(int timer, int secs)
+void set_timer(int timer, float secs)
 {
     if ((timer > 2) || (timer < 0))
         return;
     timerstart[timer] = biostimer[0];
-    timerend[timer] = timerstart[timer] + (secs*182UL/10) + 1;
+    timerend[timer] = timerstart[timer] + (secs*182UL/10.) + 1;
     timerused[timer] = 1; /* mark as running */
 }
 
@@ -6579,7 +6669,7 @@ static void collect_events(void)
     int hr;
 
     /* -------- test for a clock event (one/second) ------- */
-    // if (timed_out(clocktimer))    {
+    if (timed_out(clocktimer))    {
         time_t t = time(NULL);	/* the current time */
         char timesep = SysConfig.CountryTimeSeparator;	/* default 12:12:12am separator */
         int ampmflag = 0;   /* 1 ampm 0 24h clock */
@@ -6606,7 +6696,7 @@ static void collect_events(void)
         set_timer(clocktimer, 1);
         /* -------- post the clock event -------- */
         PostEvent(CLOCKTICK, (PARAM)time_string, 0);
-    // }
+    }
 
     /* --------- keyboard events ---------- */
     if ((sk = getshift()) != ShiftKeys)    {
@@ -6851,7 +6941,7 @@ int SendMessage(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
                 if (wnd != NULL) {
                     if (CaptureMouse == wnd || (int)p1)
                         CaptureMouse = wnd->PrevMouse;
-                    else	{
+                    else {
                         WINDOW twnd = CaptureMouse;
                         while (twnd != NULL)	{
                             if (twnd->PrevMouse == wnd)	{
@@ -6930,24 +7020,33 @@ static WINDOW MouseWindow(int x, int y)
     return Mwnd;
 }
 
-void Cooperate(void)
+BOOL Cooperate(void)
 {
     handshaking++;
-    dispatch_message();
+    int msgs_cnt = 0;
+    dispatch_message(&msgs_cnt);
     --handshaking;
+    return msgs_cnt > 0;
+}
+
+void KickProgress(int ticks) {
+    biostimer[0] += ticks;
 }
 
 /* ---- dispatch messages to the message proc function ---- */
-BOOL dispatch_message(void)
+BOOL dispatch_message(int *msgs_cnt)
 {
     WINDOW Mwnd, Kwnd;
     /* -------- collect mouse and keyboard events ------- */
     collect_events();
 
+    if (msgs_cnt) {
+        *msgs_cnt = EventQueueCtr + MsgQueueCtr;
+    }
+
     /* only message.c can fill the event queue, but all components */
     /* can fill the message queue. Events come from user or clock. */
-    if ( (EventQueueCtr == 0) && (MsgQueueCtr == 0) &&
-        (handshaking == 0) ) {	/* BORED - new 0.7c */
+    if ( (EventQueueCtr == 0) && (MsgQueueCtr == 0) && (handshaking == 0) ) { /* BORED - new 0.7c */
     }
 
     /* --------- dequeue and process events -------- */
@@ -7011,7 +7110,7 @@ BOOL dispatch_message(void)
         SendMessage(mq.wnd, mq.msg, mq.p1, mq.p2);
         if (mq.msg == ENDDIALOG)
             return FALSE;
-        if (mq.msg == STOP)	{
+        if (mq.msg == STOP) {
             PostMessage(NULL, STOP, 0, 0);
             return FALSE;
         }
@@ -7021,7 +7120,7 @@ BOOL dispatch_message(void)
 
 void ProcessMessages (void)
 {
-    while (dispatch_message());
+    while (dispatch_message(NULL));
 }
 /* ------------- mouse.c ------------- */
 
@@ -7294,8 +7393,7 @@ static void dragborder(WINDOW, int, int);
 static void sizeborder(WINDOW, int, int);
 static int px = 0, py = 0;
 static int diff;
-static struct window dwnd = {DUMMY, NULL, NormalProc,
-                                {-1,-1,-1,-1}};
+static struct window dwnd = {DUMMY, NULL, NormalProc, {-1,-1,-1,-1}};
 static con_char_t *Bsave;
 static con_char_t Bht, Bwd;
 BOOL WindowMoving;
@@ -7898,9 +7996,9 @@ static void CloseWindowMsg(WINDOW wnd)
         SetPrevFocus();
     /* -- free memory allocated to this window - */
     if (wnd->title != NULL)
-        free(wnd->title);
+        DFfree(wnd->title);
     if (wnd->videosave != NULL)
-        free(wnd->videosave);
+        DFfree(wnd->videosave);
     /* -- remove window from parent's list of children -- */
 #if CLASSIC_WINDOW_NUMBERING
     RemoveWindow(wnd);
@@ -7927,7 +8025,7 @@ static void CloseWindowMsg(WINDOW wnd)
 #endif
     if (wnd == inFocus)
         inFocus = NULL;
-    free(wnd);
+    DFfree(wnd);
 }
 
 /* ---- Window-processing module for NORMAL window class ---- */
@@ -8293,41 +8391,36 @@ static void PaintUnderLappers(WINDOW wnd)
 /* --- save video area to be used by dummy window border --- */
 static void SaveBorder(RECT rc)
 {
-    RECT lrc;
-    con_char_t *cp;
     Bht = RectBottom(rc) - RectTop(rc) + 1;
     Bwd = RectRight(rc) - RectLeft(rc) + 1;
     Bsave = DFrealloc(Bsave, (Bht + Bwd) * 4);
 
-    lrc = rc;
+    RECT lrc = rc;
     RectBottom(lrc) = RectTop(lrc);
     getvideo(lrc, Bsave);
     RectTop(lrc) = RectBottom(lrc) = RectBottom(rc);
     getvideo(lrc, Bsave + Bwd);
-    cp = Bsave + Bwd * 2;
-    for (int i = 1; i < Bht-1; i++)    {
-        *cp++ = GetVideoChar(RectLeft(rc),RectTop(rc)+i);
-        *cp++ = GetVideoChar(RectRight(rc),RectTop(rc)+i);
+    con_char_t *cp = Bsave + Bwd * 2;
+    for (int i = 1; i < Bht-1; i++) {
+        *cp++ = GetVideoChar(RectLeft(rc), RectTop(rc)+i);
+        *cp++ = GetVideoChar(RectRight(rc), RectTop(rc)+i);
     }
 }
 /* ---- restore video area used by dummy window border ---- */
 static void RestoreBorder(RECT rc)
 {
-    if (Bsave != NULL)    {
-        RECT lrc;
-        int i;
-        con_char_t *cp;
-        lrc = rc;
+    if (Bsave != NULL) {
+        RECT lrc = rc;
         RectBottom(lrc) = RectTop(lrc);
         storevideo(lrc, Bsave);
         RectTop(lrc) = RectBottom(lrc) = RectBottom(rc);
         storevideo(lrc, Bsave + Bwd);
-        cp = Bsave + Bwd * 2;
-        for (i = 1; i < Bht-1; i++)    {
-            PutVideoChar(RectLeft(rc),RectTop(rc)+i, *cp++);
-            PutVideoChar(RectRight(rc),RectTop(rc)+i, *cp++);
+        con_char_t *cp = Bsave + Bwd * sizeof(con_char_t);
+        for (int i = 1; i < Bht-1; i++) {
+            PutVideoChar(RectLeft(rc), RectTop(rc)+i, *cp++);
+            PutVideoChar(RectRight(rc), RectTop(rc)+i, *cp++);
         }
-        free(Bsave);
+        DFfree(Bsave);
         Bsave = NULL;
     }
 }
@@ -8338,7 +8431,7 @@ static BOOL InsideWindow(WINDOW wnd, int x, int y)
     rc = WindowRect(wnd);
     if (!TestAttribute(wnd, NOCLIP))    {
         WINDOW pwnd = GetParent(wnd);
-        while (pwnd != NULL)    {
+        while (pwnd != NULL) {
             rc = subRectangle(rc, ClientRect(pwnd));
             pwnd = GetParent(pwnd);
         }
@@ -8349,7 +8442,7 @@ static BOOL InsideWindow(WINDOW wnd, int x, int y)
 BOOL isDerivedFrom(WINDOW wnd, CLASS cls)
 {
     CLASS tclass = GetClass(wnd);
-    while (tclass != -1)    {
+    while (tclass != -1) {
         if (tclass == cls)
             return TRUE;
         tclass = (classdefs[tclass].base);
@@ -8361,7 +8454,7 @@ BOOL isDerivedFrom(WINDOW wnd, CLASS cls)
 WINDOW GetAncestor(WINDOW wnd)
 {
     if (wnd != NULL)    {
-        while (GetParent(wnd) != NULL)    {
+        while (GetParent(wnd) != NULL) {
             if (GetClass(GetParent(wnd)) == APPLICATION)
                 break;
             wnd = GetParent(wnd);
@@ -8383,8 +8476,7 @@ BOOL isVisible(WINDOW wnd)
 /* -- adjust a window's rectangle to clip it to its parent - */
 static RECT ClipRect(WINDOW wnd)
 {
-    RECT rc;
-    rc = WindowRect(wnd);
+    RECT rc = WindowRect(wnd);
     if (TestAttribute(wnd, SHADOW))    {
         RectBottom(rc)++;
         RectRight(rc)++;
@@ -8395,14 +8487,10 @@ static RECT ClipRect(WINDOW wnd)
 /* -- get the video memory that is to be used by a window -- */
 static void GetVideoBuffer(WINDOW wnd)
 {
-    RECT rc;
-    int ht;
-    int wd;
-
-    rc = ClipRect(wnd);
-    ht = RectBottom(rc) - RectTop(rc) + 1;
-    wd = RectRight(rc) - RectLeft(rc) + 1;
-    wnd->videosave = DFrealloc(wnd->videosave, (ht * wd * 2));
+    RECT rc = ClipRect(wnd);
+    int ht = RectBottom(rc) - RectTop(rc) + 1;
+    int wd = RectRight(rc) - RectLeft(rc) + 1;
+    wnd->videosave = DFrealloc(wnd->videosave, (ht * wd * sizeof(con_char_t)));
     get_videomode();
     getvideo(rc, wnd->videosave);
 }
@@ -8411,11 +8499,10 @@ static void GetVideoBuffer(WINDOW wnd)
 static void PutVideoBuffer(WINDOW wnd)
 {
     if (wnd->videosave != NULL)    {
-        RECT rc;
-        rc = ClipRect(wnd);
+        RECT rc = ClipRect(wnd);
         get_videomode();
         storevideo(rc, wnd->videosave);
-        free(wnd->videosave);
+        DFfree(wnd->videosave);
         wnd->videosave = NULL;
     }
 }
@@ -8423,7 +8510,7 @@ static void PutVideoBuffer(WINDOW wnd)
 /* ------- return TRUE if awnd is an ancestor of wnd ------- */
 BOOL isAncestor(WINDOW wnd, WINDOW awnd)
 {
-    while (wnd != NULL)	{
+    while (wnd != NULL) {
         if (wnd == awnd)
             return TRUE;
         wnd = GetParent(wnd);
@@ -8434,7 +8521,7 @@ BOOL isAncestor(WINDOW wnd, WINDOW awnd)
 
 /* -------------- pictbox.c -------------- */
 
-typedef struct    {
+typedef struct {
     enum VectTypes vt;
     RECT rc;
 } VECT;
@@ -8554,7 +8641,7 @@ static void PaintVector(WINDOW wnd, RECT rc)
         for (int cw = 0; cw < sizeof(CharInWnd); cw++)    {
             if (ch == CharInWnd[cw])    {
                 /* ---- hit another vector character ---- */
-                if ((coll=FindVector(wnd, rc, xi, yi)) != -1) {
+                if ((coll = FindVector(wnd, rc, xi, yi)) != -1) {
                     /* compute first/middle/last subscript */
                     if (i == len-1)
                         fml = 2;
@@ -8612,8 +8699,7 @@ static void DrawVectorMsg(WINDOW wnd,PARAM p1,enum VectTypes vt)
 {
     if (p1)    {
         VECT vc;
-        wnd->VectorList = DFrealloc(wnd->VectorList,
-                sizeof(VECT) * (wnd->VectorCount + 1));
+        wnd->VectorList = DFrealloc(wnd->VectorList, sizeof(VECT) * (wnd->VectorCount + 1));
         vc.vt = vt;
         vc.rc = *(RECT *)p1;
         *(((VECT *)(wnd->VectorList))+wnd->VectorCount)=vc;
@@ -8657,7 +8743,7 @@ int PictureProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
             return TRUE;
         case CLOSE_WINDOW:
             if (wnd->VectorList != NULL)
-                free(wnd->VectorList);
+                DFfree(wnd->VectorList);
             break;
         default:
             break;
@@ -8695,8 +8781,7 @@ void DrawBox(WINDOW wnd, int x, int y, int ht, int wd)
     SendMessage(wnd, DRAWBOX, (PARAM) &rc, 0);
 }
 
-void DrawBar(WINDOW wnd,enum VectTypes vt,
-                        int x,int y,int len,int hv)
+void DrawBar(WINDOW wnd,enum VectTypes vt, int x,int y,int len,int hv)
 {
     RECT rc = PictureRect(x,y,len,hv);
     SendMessage(wnd, DRAWBAR, (PARAM) &rc, (PARAM) vt);
@@ -8718,7 +8803,7 @@ static int PopDownCreateWindowMsg(WINDOW wnd)
     ClearAttribute(wnd, HASTITLEBAR | VSCROLLBAR | MOVEABLE | SIZEABLE | HSCROLLBAR);
 	/* ------ adjust to keep popdown on screen ----- */
 	adj = SCREENHEIGHT-1-wnd->rc.bt;
-	if (adj < 0)	{
+	if (adj < 0) {
 		wnd->rc.tp += adj;
 		wnd->rc.bt += adj;
 	}
@@ -9609,7 +9694,7 @@ static int SliderTextProc(WINDOW wnd,MESSAGE msg,PARAM p1,PARAM p2)
             GenericProc(wnd, PAINT, 0, 0);
             if (Percent >= 100)
                 SendMessage(GetParent(wnd),COMMAND,ID_CANCEL,0);
-            if (!dispatch_message())
+            if (!dispatch_message(NULL))
                 PostMessage(GetParent(wnd), ENDDIALOG, 0, 0);
             return KeepRunning;
         default:
@@ -9775,7 +9860,7 @@ int StatusBarProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
 
             SetStandardColor(wnd);
             PutWindowLine(wnd, statusbar, 0, 0);
-            free(statusbar);
+            DFfree(statusbar);
             return TRUE;
         case BORDER:
             return TRUE;
@@ -10116,7 +10201,7 @@ ENDDB
 
 /* ----- default colors for color video system ----- */
 ColorScheme color = {
-    FALSE, 0,{
+    FALSE, 0, {
     /* ------------ NORMAL ------------ */
    {{LIGHTGRAY, BLACK}, /* STD_COLOR    */
     {LIGHTGRAY, BLACK}, /* SELECT_COLOR */
@@ -10148,7 +10233,7 @@ ColorScheme color = {
     {BLACK, LIGHTGRAY}},/* HILITE_COLOR */
 
     /* ----------- EDITBOX ------------ */
-   {{LIGHTGRAY, BLUE}, /* STD_COLOR    */
+   {{LIGHTGRAY, BLUE},  /* STD_COLOR    */
     {BLACK, LIGHTGRAY}, /* SELECT_COLOR */
     {LIGHTGRAY, BLACK}, /* FRAME_COLOR  */
     {BLACK, LIGHTGRAY}},/* HILITE_COLOR */
@@ -10631,7 +10716,7 @@ int TextProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
                 SendMessage(wnd, ADDTEXT, (PARAM)txt, 0);
                 if ((cp = strchr(cp, '\n')) != NULL)
                     cp++;
-                free(txt);
+                DFfree(txt);
             }
             break;
         default:
@@ -10730,7 +10815,7 @@ static void TBClearTextMsg(WINDOW wnd)
 {
     /* ----- clear text from textbox ----- */
     if (wnd->text != NULL)
-        free(wnd->text);
+        DFfree(wnd->text);
     wnd->text = NULL;
     wnd->textlen = 0;
     wnd->wlines = 0;
@@ -11069,7 +11154,7 @@ static void TBCloseWindowMsg(WINDOW wnd)
 {
     SendMessage(wnd, CLEARTEXT, 0, 0);
     if (wnd->TextPointers != NULL)    {
-        free(wnd->TextPointers);
+        DFfree(wnd->TextPointers);
         wnd->TextPointers = NULL;
     }
 }
@@ -11441,7 +11526,7 @@ void WriteTextLine(WINDOW wnd, RECT *rcc, int y, BOOL reverse)
         SetStandardColor(wnd);
     /* ------- display the line -------- */
     writeline(wnd, line+dif, RectLeft(rc)+BorderAdj(wnd), y-wnd->wtop+TopBorderAdj(wnd), FALSE);
-    free(svlp);
+    DFfree(svlp);
 }
 
 void MarkTextBlock(WINDOW wnd, int BegLine, int BegCol, int EndLine, int EndCol)
@@ -11521,12 +11606,12 @@ void movetoscreen(void *bf, int off, int len);
 void getvideo(RECT rc, void *bf)
 {
     int ht = RectBottom(rc)-RectTop(rc)+1;
-    int bytes_row = (RectRight(rc)-RectLeft(rc)+1) * 2;
+    int bytes_row = (RectRight(rc)-RectLeft(rc)+1) * sizeof(con_char_t);
     unsigned vadr = vad(RectLeft(rc), RectTop(rc));
     hide_mousecursor();
     while (ht--) {
         movefromscreen(bf, vadr, bytes_row);
-        vadr += SCREENWIDTH*2;
+        vadr += SCREENWIDTH * sizeof(con_char_t);
         bf = (char *)bf + bytes_row;
     }
     show_mousecursor();
@@ -11535,13 +11620,13 @@ void getvideo(RECT rc, void *bf)
 /* -- write a rectangle of video memory from a save buffer -- */
 void storevideo(RECT rc, void *bf)
 {
-    int ht = RectBottom(rc)-RectTop(rc)+1;
-    int bytes_row = (RectRight(rc)-RectLeft(rc)+1) * 2;
+    int ht = RectBottom(rc) - RectTop(rc) + 1;
+    int bytes_row = (RectRight(rc)-RectLeft(rc)+1) * sizeof(con_char_t);
     unsigned vadr = vad(RectLeft(rc), RectTop(rc));
     hide_mousecursor();
     while (ht--)    {
         movetoscreen(bf, vadr, bytes_row);
-        vadr += SCREENWIDTH*2;
+        vadr += SCREENWIDTH * sizeof(con_char_t);
         bf = (char *)bf + bytes_row;
     }
     show_mousecursor();
@@ -11568,17 +11653,17 @@ void PutVideoChar(int x, int y, con_char_t c)
 
 BOOL CharInView(WINDOW wnd, int x, int y)
 {
-    WINDOW nwnd = NextWindow(wnd);
     WINDOW pwnd;
     RECT rc;
-    int x1 = GetLeft(wnd)+x;
-    int y1 = GetTop(wnd)+y;
+    WINDOW nwnd = NextWindow(wnd);
+    int x1 = GetLeft(wnd) + x;
+    int y1 = GetTop(wnd) + y;
 
     if (!TestAttribute(wnd, VISIBLE))
         return FALSE;
     if (!TestAttribute(wnd, NOCLIP)) {
         WINDOW wnd1 = GetParent(wnd);
-        while (wnd1 != NULL)    {
+        while (wnd1 != NULL) {
             /* --- clip character to parent's borders -- */
             if (!TestAttribute(wnd1, VISIBLE))
                 return FALSE;
@@ -11587,16 +11672,16 @@ BOOL CharInView(WINDOW wnd, int x, int y)
             wnd1 = GetParent(wnd1);
         }
     }
-    while (nwnd != NULL)	{
+    while (nwnd != NULL) {
         if (!isHidden(nwnd) /* && !isAncestor(wnd, nwnd) */ ) {
             rc = WindowRect(nwnd);
-            if (TestAttribute(nwnd, SHADOW))    {
+            if (TestAttribute(nwnd, SHADOW)) {
                 RectBottom(rc)++;
                 RectRight(rc)++;
             }
             if (!TestAttribute(nwnd, NOCLIP)) {
                 pwnd = nwnd;
-                while (GetParent(pwnd))	{
+                while (GetParent(pwnd)) {
                     pwnd = GetParent(pwnd);
                     rc = subRectangle(rc, ClientRect(pwnd));
                 }
@@ -11614,6 +11699,8 @@ void wputch(WINDOW wnd, int c, int x, int y)
 {
     if (CharInView(wnd, x, y)) {
         int ch = (c & 255) | (clr(foreground, background) << 8);
+        if (c > 255)
+            ch |= ((c & 0x300) << 8);
         int xc = GetLeft(wnd)+x;
         int yc = GetTop(wnd)+y;
         hide_mousecursor();
@@ -11623,27 +11710,25 @@ void wputch(WINDOW wnd, int c, int x, int y)
 }
 
 /* ------- write a string to a window ---------- */
-void wputs(WINDOW wnd, void *s, int x, int y)
+static void _wputs(WINDOW wnd, const char *s, const char *end, int x, int y)
 {
     int x1=GetLeft(wnd)+x;
     int x2=x1;
     int y1=GetTop(wnd)+y;
 
     if (x1 < SCREENWIDTH && y1 < SCREENHEIGHT && isVisible(wnd))
-        {
+    {
         con_char_t ln[200];
         con_char_t *cp1=ln;
-        int fg=foreground;
-        int bg=background;
-        int len;
-        int off=0;
-        char *str=s;
+        int fg=foreground, bg=background;
+        int len, off=0;
+        const char *str=s;
 
-        while (*str)
+        while (*str && str != end)
         {
             if (*str == CHANGECOLOR)
             {
-                int fgcode, bgcode;	/* new 0.7c: sanity checks */
+                int fgcode, bgcode; /* new 0.7c: sanity checks */
                 str++;
                 fgcode = (*str++);
                 bgcode = (*str++);
@@ -11728,22 +11813,26 @@ void wputs(WINDOW wnd, void *s, int x, int y)
         if (len > 0)
         {
             hide_mousecursor();
-            movetoscreen(ln+off, vad(x1+off,y1), len*2);
+            movetoscreen(ln+off, vad(x1+off,y1), len*sizeof(con_char_t));
             show_mousecursor();
         }
     }
 }
+
+void wputsa(WINDOW wnd, const char *s, const char *send, int x, int y) { _wputs(wnd, s, send, x, y); }
+void wputsn(WINDOW wnd, const char *s, int n, int x, int y) { _wputs(wnd, s, s + n, x, y); }
+void wputs(WINDOW wnd, const char *s, int x, int y) { _wputs(wnd, s, NULL, x, y); }
 
 /* --------- get the current video mode -------- */
 char *get_videomode(void)
 {
     videomode();
 
-    DEV_ASSERT(sizeof(char_info_t) == 2);
-    DEV_ASSERT(sizeof(con_info_t) == sizeof(char_info_t));
+    DEV_ASSERT(sizeof(char_info_t) == 4);
+    DEV_ASSERT(sizeof(char_info_t) == sizeof(con_char_t));
 
     if(!video_address)
-        video_address = DFmalloc(SCREENWIDTH*SCREENHEIGHT*2);
+        video_address = DFmalloc(SCREENWIDTH*SCREENHEIGHT*sizeof(con_char_t)); /* uint32_t */
 
     return video_address;
 }
@@ -11869,18 +11958,17 @@ int WatchIconProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
 WINDOW WatchIcon(void)
 {
     int mx, my;
-    WINDOW wnd;
 
     SendMessage(NULL, CURRENT_MOUSE_CURSOR, (PARAM) &mx, (PARAM) &my);
-    wnd = CreateWindow(BOX, NULL, mx, my, 3, 5, NULL,NULL, WatchIconProc, VISIBLE | HASBORDER | SHADOW | SAVESELF);
-    return wnd;
-
+    return CreateWindow(BOX, NULL, mx, my, 3, 5, NULL,NULL, WatchIconProc, VISIBLE | HASBORDER | SHADOW | SAVESELF);
 }
+
 /* ---------- window.c ------------- */
 
 WINDOW inFocus = NULL;
 
 int foreground, background;   /* current video colors */
+int fontset; /* current fontset */
 
 static void TopLine(WINDOW, int, RECT);
 
@@ -12366,24 +12454,28 @@ void PutWindowChar(WINDOW wnd, int c, int x, int y)
         wputch(wnd, c, x+BorderAdj(wnd), y+TopBorderAdj(wnd));
 }
 
-void PutWindowLine(WINDOW wnd, char *s, int x, int y)
+void PutWindowLine(WINDOW wnd, const char *s, int x, int y)
 {
-    int saved = FALSE, sv;
+    const char *send = NULL;
     if (x < ClientWidth(wnd) && y < ClientHeight(wnd))	{
-        char *en = s+ClientWidth(wnd)-x;
-        if (strlen(s)+x > ClientWidth(wnd))	{
-            sv = *en;
-            *en = '\0';
-            saved = TRUE;
+        const char *en = s+ClientWidth(wnd)-x;
+        if (strlen(s)+x > ClientWidth(wnd)) {
+            send = en;
         }
         ClipString++;
-        wputs(wnd, s, x+BorderAdj(wnd), y+TopBorderAdj(wnd));
+        wputsa(wnd, s, send, x+BorderAdj(wnd), y+TopBorderAdj(wnd));
         --ClipString;
-        if (saved)
-            *en = sv;
     }
 }
 
+void PadWindowLine(WINDOW wnd, int x, int y, const char c)
+{
+    if (x < ClientWidth(wnd) && y < ClientHeight(wnd)) {
+        while (x < ClientWidth(wnd)) {
+            wputch(wnd, c, x++, y);
+        }
+    }
+}
 
 /* --------- set window colors --------- */
 void SetStandardColor(WINDOW wnd)
@@ -12408,20 +12500,13 @@ BOOL init_console(int console_width, int console_height) {
     return TRUE;
 }
 
-int getScreenWidth()
+void get_console_size(int *w, int *h)
 {
   DEV_ASSERT(_width>0);
   DEV_ASSERT(_height>0);
 
-  return _width;
-}
-
-int getScreenHeight()
-{
-  DEV_ASSERT(_width>0);
-  DEV_ASSERT(_height>0);
-
-  return _height;
+  if (w) *w = _width;
+  if (h) *h = _height;
 }
 
 #ifdef __linux__
@@ -12562,21 +12647,21 @@ static intptr_t findfirst_dotdot(const char* filespec, struct _finddata_t* filei
 
     /* Make sure that we actually have a basename. */
     if (dirname[0] == '\0') {
-        free(canonicalized);
+        DFfree(canonicalized);
         errno = ENOENT;
         return INVALID_HANDLE;
     }
 
     /* Make sure that we won't overflow finddata_t::name. */
     if (strlen(dirname) > 259) {
-        free(canonicalized);
+        DFfree(canonicalized);
         errno = ENOMEM;
         return INVALID_HANDLE;
     }
 
     fill_finddata(&st, dirname, fileinfo);
 
-    free(canonicalized);
+    DFfree(canonicalized);
 
     /*
      * Return a special handle since we can't return
@@ -12663,8 +12748,8 @@ int _findclose(intptr_t fhandle) {
     handle = (struct fhandle_t*) fhandle;
 
     closedir(handle->dstream);
-    free(handle->spec);
-    free(handle);
+    DFfree(handle->spec);
+    DFfree(handle);
 
     return 0;
 }
@@ -12813,7 +12898,7 @@ static int _window_print_internal(WINDOW wnd, int x, int y, int rw, int rh, enum
         } else c = NULL;
     } while ( c && cy < maxh && (rh == 0 || cy < y+rh) );
 
-    free(msg_dup); // release duplicate
+    DFfree(msg_dup); // release duplicate
 
     return cy-y+1;
 }
@@ -12845,27 +12930,184 @@ int TextViewProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
     return BaseWndProc(TEXTVIEW, wnd, msg, p1, p2);
 }
 
+
+#define df_ssprintf(...)                                \
+    ({ int _ss_size = snprintf(0, 0, ##__VA_ARGS__);    \
+    char *_ss_ret = (char*)alloca(_ss_size+1);          \
+    snprintf(_ss_ret, _ss_size+1, ##__VA_ARGS__);       \
+    _ss_ret; })
+
+#define FPARAM(pv) ((union { PARAM p; float f; }){pv}).f
+
 /* Graphing
  * --------
- * Controls that draws x-y plotting graph - with scrolling.
+ * Controls that draws x-y histogram graph - with scrolling.
+ *
+ * [Label][Sparkline][min:][avg:][max:]
+ * [Label][Sparkline][min:][avg:][max:]
+ *
+ * Reference:
+ *  - https://github.com/holman/spark/blob/master/spark
+ *  - https://github.com/joemiller/spark-ping/blob/master/spark-ping
+ *  - https://github.com/antirez/aspark
  */
+
+#define NUM_BARS 12
+
+#if NUM_BARS == 8
+  const short bars[NUM_BARS] = {0x0109, 0x010a, 0x010b, 0x010c, 0x010d, 0x010e, 0x010f, 0x0110;
+#elif NUM_BARS == 12
+  const short bars[NUM_BARS] = {0x010a, 0x010b, 0x010c, 0x010d, 0x010e, 0x010f, 0x0110, 0x0111, 0x0112, 0x0113, 0x0114, 0x0115};
+#endif
+
+void append_array(float points[], float n, int length) {
+    int i; for(i=0; i<length-1; i++)
+        points[i] = points[i+1];
+    points[i] = n;
+}
+
+int print_sparkline_at(WINDOW wnd, const char *label, float points[], int length, float avg, bool quiet, bool haveavg, int xpos, int ypos) {
+    float max = points[0];
+    float min = points[0];
+
+    for(int i=1; i<length; i++) {
+        if (points[i] > max)
+            max = points[i];
+        else if (points[i] < min)
+            min = points[i];
+    }
+
+    PutWindowLine(wnd, label, xpos, ypos); xpos += strlen(label);
+
+    for (int i=0; i<length; i++) {
+        int j;
+        if (max == 0 && min == 0) {
+            j = 0;
+        } else if (min == max) {
+            j = NUM_BARS-1;
+        } else {
+            j = (int)ceil((points[i]-min)/(max-min)*(NUM_BARS-1));
+        }
+        PutWindowChar(wnd, bars[j], xpos, ypos); xpos++;
+    }
+
+#define fmt_value(v) ({int iv = round(v); (iv == v) ? df_ssprintf(" %d", iv) : df_ssprintf(" %.1f", v);})
+
+    if (!quiet) {
+        const char *max_descr =  fmt_value(max);
+        const char *min_descr =  fmt_value(min);
+        PutWindowLine(wnd, max_descr, xpos, ypos); PutWindowChar(wnd, 0x0118, xpos, ypos); xpos += strlen(max_descr);
+        PutWindowLine(wnd, min_descr, xpos, ypos); PutWindowChar(wnd, 0x0119, xpos, ypos); xpos += strlen(min_descr);
+        if (haveavg) {
+            const char *avg_descr = fmt_value(avg);
+            PutWindowLine(wnd, avg_descr, xpos, ypos); PutWindowChar(wnd, 0x011a, xpos, ypos); xpos += strlen(avg_descr);
+        }
+    }
+    return xpos;
+}
+
 int GraphBoxProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
 {
-    static const char div_top = '\xc2';
-    static const char div_mid = '\xc4';
-    static const char div_bot = '\xc1';
+#define SPARKLINE_SIZE 12
+#define LABEL_MAX_SIZE 64
+#define GRAPHS_CAPACITY 32
+#define SAMPLES_CAPACITY 200
+
+    struct graph_t {
+        int id;
+        char label[LABEL_MAX_SIZE];
+        float samples[SAMPLES_CAPACITY];
+        float avg;
+        bool quiet, haveavg;
+    };
+
+    struct wnd_grapth_t {
+        struct graph_t *_graphs[GRAPHS_CAPACITY];
+        int _mapping[GRAPHS_CAPACITY];
+    };
 
     /* CTLWINDOW *ct = GetControl(wnd); */
     RECT rc = ClientRect(wnd);
+    int id;
+    float value;
+    struct wnd_grapth_t *ginfo;
     switch (msg) {
+        case CREATE_WINDOW:
+            wnd->extension = DFcalloc(1, sizeof(struct wnd_grapth_t));
+            for (int i = 0; i < GRAPHS_CAPACITY; i++) {
+                ((struct wnd_grapth_t*)wnd->extension)->_mapping[i] = -1;
+            }
+            break;
+        case CLOCKTICK:
+            return TRUE;
+        case CLEARALL:
+            return TRUE;
+        case CLEARGRAPH:
+            return TRUE;
+        case REMOVEGRAPH:
+            id = p1;
+            ginfo = (struct wnd_grapth_t*)wnd->extension;
+            if (ginfo && id < GRAPHS_CAPACITY) {
+                int index = ginfo->_mapping[id];
+                if (index >= -1) {
+                    struct graph_t *graph = ginfo->_graphs[index];
+                    if (graph) {
+                        DFfree(graph);
+                        ginfo->_graphs[index] = NULL; // clear and remove
+                    }
+                    ginfo->_mapping[id] = -1;
+                }
+            }
+            return TRUE;
+        case SETLABEL:
+        case ADDSAMPLE:
+        case ADDSAMPLEAVG:
+            id = p1;
+            value = FPARAM(p2);
+            ginfo = (struct wnd_grapth_t*)wnd->extension;
+            if (ginfo && id < GRAPHS_CAPACITY) {
+                int index = ginfo->_mapping[id];
+                if (index == -1) { // add graph entry
+                    for (int g=0; g<GRAPHS_CAPACITY; g++) {
+                        if (!ginfo->_graphs[g]) {
+                            ginfo->_graphs[index = ginfo->_mapping[id] = g] = DFcalloc(1, sizeof(struct graph_t));
+                            break;
+                        }
+                    }
+                }
+                if (index > -1) {
+                    struct graph_t *graph = ginfo->_graphs[index];
+                    if (msg == SETLABEL)
+                        strncpy(graph->label, (const char*)p2, LABEL_MAX_SIZE);
+                    else if (msg == ADDSAMPLE)
+                        append_array(graph->samples, value, SAMPLES_CAPACITY);
+                    else if (msg == ADDSAMPLEAVG) {
+                        graph->avg = value;
+                        graph->haveavg = TRUE;
+                    }
+                    SendMessage(wnd, PAINT, 0, 0);
+                }
+            }
+            return TRUE;
         case PAINT:
             if (isVisible(wnd))
             {
+                SetStandardColor(wnd);
                 NormalProc(wnd, msg, p1, p2); // clear bg etc
-                char *line = alloca(RectWidth(rc)+1);
-                memset(line,div_top,RectWidth(rc)); line[RectWidth(rc)] = 0; PutWindowLine(wnd, line, 0, 0);
-                memset(line,div_mid,RectWidth(rc)); line[RectWidth(rc)] = 0; PutWindowLine(wnd, line, 0, RectHeight(rc)/2);
-                memset(line,div_bot,RectWidth(rc)); line[RectWidth(rc)] = 0; PutWindowLine(wnd, line, 0, RectHeight(rc)-1);
+                ginfo = (struct wnd_grapth_t*)wnd->extension;
+                if (ginfo) {
+                    int ypos = 0;
+                    for (int g=0; g<GRAPHS_CAPACITY; g++) {
+                        int index = ginfo->_mapping[g];
+                        if (index > -1) {
+                            struct graph_t *graph = ginfo->_graphs[index];
+                            if (graph) {
+                                int printed = print_sparkline_at(wnd, graph->label, graph->samples + (SAMPLES_CAPACITY - SPARKLINE_SIZE), SPARKLINE_SIZE, graph->avg, graph->quiet, graph->haveavg, 0, ypos);
+                                PadWindowLine(wnd, printed, ypos++, ' ');
+                            }
+                        }
+                    }
+                }
                 return TRUE;
             }
             break;
@@ -13194,9 +13436,9 @@ int LcdBoxProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
         case PAINT:
             if (isVisible(wnd))
             {
+                SetStandardColor(wnd);
                 NormalProc(wnd, msg, p1, p2); // clear bg etc
                 s = (unsigned char*)GetText(wnd);
-                SetStandardColor(wnd);
                 if (s != NULL)
                 {
                     int x = 0, y = 0;
@@ -13222,3 +13464,120 @@ int LcdBoxProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
     return BaseWndProc(LCDBOX, wnd, msg, p1, p2);
 };
 
+/* Canvas
+ * ------
+ * Pixel canvas using braille characters
+ *
+ * Reference:
+ *  - https://github.com/dcat/tplot/blob/master/tplot.c
+ */
+
+/**
+ *            6-dot cell patterns
+ *          0 1 2 3 4 5 6 7 8 9 A B C D E F
+ *   U+280x ⠀ ⠁ ⠂ ⠃ ⠄ ⠅ ⠆ ⠇ ⠈ ⠉ ⠊ ⠋ ⠌ ⠍ ⠎ ⠏
+ *   U+281x ⠐ ⠑ ⠒ ⠓ ⠔ ⠕ ⠖ ⠗ ⠘ ⠙ ⠚ ⠛ ⠜ ⠝ ⠞ ⠟
+ *   U+282x ⠠ ⠡ ⠢ ⠣ ⠤ ⠥ ⠦ ⠧ ⠨ ⠩ ⠪ ⠫ ⠬ ⠭ ⠮ ⠯
+ *   U+283x ⠰ ⠱ ⠲ ⠳ ⠴ ⠵ ⠶ ⠷ ⠸ ⠹ ⠺ ⠻ ⠼ ⠽ ⠾ ⠿
+ *
+ *            8-dot cell patterns
+ *   U+284x ⡀ ⡁ ⡂ ⡃ ⡄ ⡅ ⡆ ⡇ ⡈ ⡉ ⡊ ⡋ ⡌ ⡍ ⡎ ⡏
+ *   U+285x ⡐ ⡑ ⡒ ⡓ ⡔ ⡕ ⡖ ⡗ ⡘ ⡙ ⡚ ⡛ ⡜ ⡝ ⡞ ⡟
+ *   U+286x ⡠ ⡡ ⡢ ⡣ ⡤ ⡥ ⡦ ⡧ ⡨ ⡩ ⡪ ⡫ ⡬ ⡭ ⡮ ⡯
+ *   U+287x ⡰ ⡱ ⡲ ⡳ ⡴ ⡵ ⡶ ⡷ ⡸ ⡹ ⡺ ⡻ ⡼ ⡽ ⡾ ⡿
+ *   U+288x ⢀ ⢁ ⢂ ⢃ ⢄ ⢅ ⢆ ⢇ ⢈ ⢉ ⢊ ⢋ ⢌ ⢍ ⢎ ⢏
+ *   U+289x ⢐ ⢑ ⢒ ⢓ ⢔ ⢕ ⢖ ⢗ ⢘ ⢙ ⢚ ⢛ ⢜ ⢝ ⢞ ⢟
+ *   U+28Ax ⢠ ⢡ ⢢ ⢣ ⢤ ⢥ ⢦ ⢧ ⢨ ⢩ ⢪ ⢫ ⢬ ⢭ ⢮ ⢯
+ *   U+28Bx ⢰ ⢱ ⢲ ⢳ ⢴ ⢵ ⢶ ⢷ ⢸ ⢹ ⢺ ⢻ ⢼ ⢽ ⢾ ⢿
+ *   U+28Cx ⣀ ⣁ ⣂ ⣃ ⣄ ⣅ ⣆ ⣇ ⣈ ⣉ ⣊ ⣋ ⣌ ⣍ ⣎ ⣏
+ *   U+28Dx ⣐ ⣑ ⣒ ⣓ ⣔ ⣕ ⣖ ⣗ ⣘ ⣙ ⣚ ⣛ ⣜ ⣝ ⣞ ⣟
+ *   U+28Ex ⣠ ⣡ ⣢ ⣣ ⣤ ⣥ ⣦ ⣧ ⣨ ⣩ ⣪ ⣫ ⣬ ⣭ ⣮ ⣯
+ *   U+28Fx ⣰ ⣱ ⣲ ⣳ ⣴ ⣵ ⣶ ⣷ ⣸ ⣹ ⣺ ⣻ ⣼ ⣽ ⣾ ⣿
+ *
+**/
+
+#define LEN(X)		  (sizeof(X) / sizeof(X[0]))
+#define BRAILLE_EMPTY 0x2800
+
+struct canvas_t {
+    unsigned char *cells;
+    unsigned int rows, cols;
+};
+
+static void canv_line(struct canvas_t *, int, int, int, int);
+static void canv_dot(struct canvas_t *, int, int);
+
+enum {
+	FIELD_A = 1 << 0,
+	FIELD_B = 1 << 3,
+	FIELD_C = 1 << 1,
+	FIELD_D = 1 << 4,
+	FIELD_E = 1 << 2,
+	FIELD_F = 1 << 5,
+	FIELD_G = 1 << 6,
+	FIELD_H = 1 << 7,
+};
+
+/* print a braille "pixel" */
+void canv_dot(struct canvas_t *canvas, int rx, int ry) {
+	if (rx > (canvas->cols * 2) || rx < 1 || ry > (canvas->rows * 4) || ry < 1) {
+		return; /* out of bounds */
+	}
+
+	int x = (rx - 1) / 2;
+	int y = (ry - 1) / 4;
+
+	/* A B
+	 * C D
+	 * E F
+	 * G H
+	 */
+
+	unsigned char *p = canvas->cells + (y * canvas->cols) + x;
+
+	switch (ry % 4) {
+	case 1: /* A B */
+		*p |= rx & 1 ? FIELD_A : FIELD_B;
+		break;
+	case 2: /* C D */
+		*p |= rx & 1 ? FIELD_C : FIELD_D;
+		break;
+	case 3: /* E F */
+		*p |= rx & 1 ? FIELD_E : FIELD_F;
+		break;
+	case 0: /* G H */
+		*p |= rx & 1 ? FIELD_G : FIELD_H;
+		break;
+	}
+
+	/* find the right char to print via table */
+	printf("\033[%u;%uH%lc", y + 1, x + 1, *p | BRAILLE_EMPTY);
+}
+
+/* dot() a line from x0, y0 to x1, y1 */
+void canv_line(struct canvas_t *canvas, int x0, int y0, int x1, int y1) {
+	int dx = abs(x1 - x0);
+	int dy = abs(y1 - y0);
+	int sx = x0 < x1 ? 1 : -1;
+	int sy = y0 < y1 ? 1 : -1;
+	int er = (dx > dy ? dx : -dy) / 2;
+
+	for (;;) {
+		canv_dot(canvas, x0, y0);
+
+		if (x0 == x1 && y0 == y1)
+			break;
+
+		int e2 = er;
+
+		if (e2 > -dx) {
+			er -= dy;
+			x0 += sx;
+		}
+
+		if (e2 < dy) {
+			er += dx;
+			y0 += sy;
+		}
+	}
+}

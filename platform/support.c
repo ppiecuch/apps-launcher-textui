@@ -72,9 +72,9 @@
 
 void print_version(FILE *restrict stream) {
 #ifdef GIT_FULL_VERSION
-    fprintf(stream, "backboard %s (%s %s)\n", GIT_FULL_VERSION, OS_STR, ARCH_STR);
+    fprintf(stream, "Backboard %s (%s %s)\n", GIT_FULL_VERSION, OS_STR, ARCH_STR);
 #else
-    fprintf(stream, "backboard v%s (%s %s)\n", VERSION, OS_STR, ARCH_STR);
+    fprintf(stream, "Backboard v%s (%s %s)\n", VERSION, OS_STR, ARCH_STR);
 #endif
 }
 
@@ -292,6 +292,28 @@ char *read_file(char *path, int *len) {
 
     *len = offset;
     return buf;
+}
+
+bool write_file(const char *path, const void *data, int len) {
+	int fd = open(path, O_WRONLY);
+
+	if (fd == -1) {
+		return false;
+	}
+
+	if (len > 0) {
+		const uint8_t *buf = (const uint8_t *)data;
+		for (size_t size_left = len; size_left > 0;) {
+			ssize_t n = write(fd, buf, size_left);
+			if (n <= 0)
+				break; /* status is okay but we need to check num written parameter */
+			size_left -= n;
+			buf += n;
+		}
+	}
+
+	close(fd);
+	return true;
 }
 
 #define BUF_SIZE 128

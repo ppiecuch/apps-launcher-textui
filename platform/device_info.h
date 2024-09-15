@@ -10,9 +10,9 @@ enum BatteryStatus {
 
 class DeviceInfo {
 public:
-    int getBatteryPercentage() = 0;    // 0 - 100
-    int getSystemLoadPercentage() = 0; // 0 -100
-    bool getCpuInfo(int *cpu_num) = 0;
+    virtual int getBatteryPercentage() = 0;    // 0 - 100
+    virtual int getSystemLoadPercentage() = 0; // 0 -100
+    virtual bool getCpuInfo(int *cpu_num) = 0;
 };
 
 #endif // DEVICE_INFO_H

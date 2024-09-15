@@ -7,6 +7,10 @@ set -e
 
 OPTS="-Wno-sign-compare -Wno-deprecated-declarations -Wno-pointer-arith"
 
+if [ "$1" == "debug" ]; then
+	OPTS="$OPTS -g"
+fi
+
 ./bin/gcc-wrap $OPTS --outdir=obj -c -I . \
 	figlet_font/*.cpp \
 	text_ui/*.c \
