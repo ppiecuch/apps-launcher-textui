@@ -13,6 +13,7 @@
 #include "platform/device_info.h"
 #include "platform/support.h"
 #include "platform/time_lapse.h"
+#include "chaiscript/chaiscript.h"
 
 #include <stdio.h>
 #include <stdint.h>
