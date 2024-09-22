@@ -9,19 +9,36 @@
 # define EXTERN_C
 #endif
 
-#define kInstrumentsWinW 35
-#define kInstrumentsWinH 10
-
-#define kLogWinH 17
+/// Views and dialogs
 
 enum {
     ID_LCDLABEL=0xe000,
-    ID_PLOTGRAPH
+    ID_PLOTGRAPH,
+    ID_LIST2COLS,
 };
 
 extern DBOX graph;
-
 EXTERN_C int InstrumentsProc(WINDOW wnd,MESSAGE msg,PARAM p1,PARAM p2);
+
+
+extern DBOX fileMgr;
+EXTERN_C int FileMgrProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2);
+
+extern DBOX sysInfo;
+EXTERN_C int SysInfoProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2);
+
+/// Menus
+
+extern MBAR MainBackboardMenu;
+
+enum {
+    ID_NEW,
+};
+
+EXTERN_C void PrepBackboardFileMenu(void *, struct Menu *);
+EXTERN_C void PrepBackboardEditMenu(void *, struct Menu *);
+EXTERN_C void PrepBackboardSearchMenu(void *, struct Menu *);
+EXTERN_C void PrepBackboardWindowMenu(void *, struct Menu *);
 
 #endif // INSTRUMENTS_H
 

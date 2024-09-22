@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <assert.h>
 
+#include "info.h"
 #include "support.h"
 #include "cpu_info.h"
 

@@ -2,13 +2,7 @@
 #define BACKBOARD_H
 
 #include "text_ui/textUI.h"
-#include "instruments.h"
-
-# define f_ssprintf(...)                                \
-    ({ int _ss_size = snprintf(0, 0, ##__VA_ARGS__);    \
-    char *_ss_ret = (char*)alloca(_ss_size+1);          \
-    snprintf(_ss_ret, _ss_size+1, ##__VA_ARGS__);       \
-    _ss_ret; })
+#include "deskviews.h"
 
 #ifdef __cplusplus
 
@@ -16,17 +10,11 @@ class DeviceInfo;
 
 class BackboardWindow
 {
-    WINDOW wnd, info, log;
+    WINDOW wnd, info, log, instruments, settings; // windows
+
     int fnt_width, fnt_height;
     int con_width, con_height;
     bool visible, quitting;
-
-    enum LogMsgType {
-        LOG_MSG_INFO,
-        LOG_MSG_DEBUG,
-        LOG_MSG_WARNING,
-        LOG_MSG_ERROR
-    };
 
     DeviceInfo *device;
 
@@ -37,12 +25,17 @@ public:
     bool quit();
 
     void openCalendar();
+
     void openSysMessageLog();
     void startCaptureEvents();
     void endCaptureEvents();
     
-    bool logMessage(const char* msg);
-    bool logMessage(LogMsgType msg_type, const char* msg);
+    void logMessage(const char* msg);
+    void recordEvent(const char *msg);
+
+    void updateStatusBar(const char *msg);
+    void updateLayout();
+    bool toggleLog();
 
     bool dispatchMessage();
 

@@ -8,10 +8,13 @@
 //  https://github.com/Huulivoide/libdrawille
 //  https://github.com/fosu/drawille-plusplus/blob/master/drawille.hpp
 
+#include "deskviews.h"
 #include "main.h"
+#include "info.h"
 #include "backboard.h"
 #include "platform/device_info.h"
 #include "platform/support.h"
+#include "platform/output.h"
 #include "platform/time_lapse.h"
 #include "chaiscript/chaiscript.h"
 
@@ -19,6 +22,7 @@
 #include <stdint.h>
 #include <libgen.h>
 #include <assert.h>
+#include <time.h>
 
 #include <vector>
 #include <string>
@@ -39,6 +43,8 @@ union _fpconv { float f; PARAM p; };
 #else
 # define PATH_SEP "/"
 #endif
+
+#define TS() ({ time_t now(time(NULL)); char buffer[80]; strftime(buffer, 80, "%m/%d %H:%M", localtime(&now)); buffer; })
 
 // Get the basename of a filename (ie the filename with the extension).
 inline std::string Filename (const std::string path, const char *sep = PATH_SEP) {
@@ -68,15 +74,40 @@ inline std::string Basename (const std::string path, const char *sep = PATH_SEP)
         return path.substr (slash+1);
 }
 
+static std::string human_readable_size(uintmax_t size) {
+    constexpr uintmax_t KB = 1024;
+    constexpr uintmax_t MB = KB * 1024;
+    constexpr uintmax_t GB = MB * 1024;
+
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(2);
+
+    if (size >= GB) {
+        oss << static_cast<double>(size) / GB << " GB";
+    } else if (size >= MB) {
+        oss << static_cast<double>(size) / MB << " MB";
+    } else if (size >= KB) {
+        oss << static_cast<double>(size) / KB << " KB";
+    } else {
+        oss << size << " bytes";
+    }
+    return oss.str();
+}
+
 /// Logging and errors handling
 
 _output_line_t output_line = nullptr;
 
 void log_output_line(const char *prefix, const char *file, int lineNumber, const char *message) {
-    backboard.logMessage(f_ssprintf("%s %s:%d %s", prefix, Filename(file).c_str(), lineNumber, message));
+    backboard.logMessage(f_ssprintf("%s %s %s:%d %s", TS(), prefix, Filename(file).c_str(), lineNumber, message));
 }
 
-/// Blackboard implementation
+#define ERROR_LOG(msg) log_output_line("[ERR] ", __FILE__, __LINE__, msg)
+#define INFO_LOG(msg)  log_output_line("[INF] ", __FILE__, __LINE__, msg)
+#define TRACE_LOG(msg) log_output_line("[TRC] ", __FILE__, __LINE__, msg)
+#define DEBUG_LOG(msg) log_output_line("[DBG] ", __FILE__, __LINE__, msg)
+
+/// Backboard implementation
 
 BackboardWindow backboard;
 
@@ -239,6 +270,10 @@ public:
     }
 }; // fps compute
 
+static int getLogWindowHeight(int totalHeight) {
+    return std::max(5., totalHeight * 0.2);
+}
+
 bool BackboardWindow::quit() { return quitting; }
 
 void BackboardWindow::resize() {
@@ -255,30 +290,80 @@ void BackboardWindow::resize() {
             return;
         }
 
-        wnd = CreateWindow(APPLICATION, "Backboard v" STR(APP_VERSION), 0, 0, -1, -1, NULL, NULL, MainAppProc, HASSTATUSBAR);
-        info = CreateWindow(TEXTVIEW, "Events", 2, 2, 15, 40, NULL, wnd, MainAppProc, SHADOW | MOVEABLE | HASBORDER | MINMAXBOX | VSCROLLBAR | VISIBLE);
-        log = CreateWindow(TEXTBOX, "Log", 0, con_height-kLogWinH-1, kLogWinH, con_width-1, NULL, wnd, MainAppProc, SHADOW | MOVEABLE | HASBORDER | MINMAXBOX | VSCROLLBAR | VISIBLE);
+        device = buildDeviceInfo();
 
-        logMessage(f_ssprintf("Running on framebuffer %dx%d pixels.", fb_screen_width(), fb_screen_height()));
-        logMessage(f_ssprintf("Resizing console to %dx%d chars.", con_width, con_height));
+        int logh = getLogWindowHeight(con_height);
 
-        DialogBox(wnd, &graph, NO, InstrumentsProc);
+        wnd = CreateWindow(APPLICATION, "Backboard v" STR(APP_VERSION), 0, 0, -1, -1, &MainBackboardMenu, NULL, MainAppProc, HASSTATUSBAR | HASMENUBAR);
+        info = CreateWindow(TEXTVIEW, "Events", 0, 0, -1, -1, NULL, wnd, MainAppProc, SHADOW | HASBORDER | VSCROLLBAR);
+        log = CreateWindow(TEXTBOX, "Log", 0, 0, -1, -1, NULL, wnd, MainAppProc, HASBORDER | VSCROLLBAR | VISIBLE);
+
+        updateStatusBar("Welcome!");
+
+        recordEvent(f_ssprintf("Running Backboard v%s", STR(APP_FULL_IDENT)));
+        recordEvent(f_ssprintf("Detected %s", device->getPlatformDescription()));
+
+        INFO_LOG(f_ssprintf("Build info: %s", BUILDTIME));
+        INFO_LOG(f_ssprintf("Running on framebuffer %dx%d pixels.", fb_screen_width(), fb_screen_height()));
+        INFO_LOG(f_ssprintf("Resizing console to %dx%d chars.", con_width, con_height));
+
+        instruments = DialogWindow(wnd, &graph, InstrumentsProc); // instruments dialog
+        // file manager dialog
+        // system info dialog
+        // settings dialog
 
         SendMessage(ControlWindow(&graph, ID_PLOTGRAPH), SETLABEL, 0, PARAM("FPS"));
         SendMessage(ControlWindow(&graph, ID_PLOTGRAPH), SETLABEL, 1, PARAM("CPU"));
         SendMessage(ControlWindow(&graph, ID_PLOTGRAPH), SETLABEL, 2, PARAM("MEM"));
 
-        // add and refresh info:
-        const char *msg = f_ssprintf("Running Backbord v%s", STR(APP_VERSION));
-        SendMessage(info, ADDTEXT, PARAM(msg), 0);
-        SendMessage(info, PAINT, 0, 0);
-
-        // WINDOW cwnd = ControlWindow(&graph, ID_LCDLABEL);
-        // SendMessage(cwnd, PAINT, 0, 0);
-        // WINDOW pwnd = ControlWindow(&graph, ID_PLOTGRAPH);
-        // SendMessage(pwnd, PAINT, 0, 0);
-
         SendMessage(log, SETFOCUS, TRUE, 0);
+
+        updateLayout();
+    }
+}
+
+void BackboardWindow::updateStatusBar(const char *msg) {
+    const char *battery_level[] = { "\x2b", "\x2c", "\x2d", "\x2e", "\x2f" };
+    const char *battery_plug = "\x3f";
+    const char *help_status1 = "\x01\x5c\x01\x29\x01\x2a\x01\x5b \x01\x06\x01L\x01O\x01G \x01\x03\xf0";
+    const char *hw[] = { "\x3c", "\x3d", "\x3e" }; // cpu, sdcard, mem
+    int v;
+    std::string cpu; if (device->getSystemLoadPercentage(v)) {
+        char dbuf[10], nbuf[10] = { 0, 0, 0, 0, 0, 0, 0 };
+        switch (snprintf(dbuf, 10, "%d", v)) {
+            case 3: nbuf[4] = '\x01'; nbuf[5] = dbuf[2];
+            case 2: nbuf[2] = '\x01'; nbuf[3] = dbuf[1];
+            case 1: nbuf[0] = '\x01'; nbuf[1] = dbuf[0];
+        }
+        cpu = f_ssprintf(" \x01%s%s\x01\x3b", hw[0], nbuf);
+    }
+    std::string mem; if (device->getMemoryUsagePercentage(v)) {
+        char dbuf[10], nbuf[10] = { 0, 0, 0, 0, 0, 0, 0 };
+        switch (snprintf(dbuf, 10, "%d", v)) {
+            case 3: nbuf[4] = '\x01'; nbuf[5] = dbuf[2];
+            case 2: nbuf[2] = '\x01'; nbuf[3] = dbuf[1];
+            case 1: nbuf[0] = '\x01'; nbuf[1] = dbuf[0];
+        }
+        mem = f_ssprintf(" \x01%s%s\x01\x3b", hw[2], nbuf);
+    }
+    SendMessage(wnd, ADDSTATUS, PARAM(f_ssprintf("%s%s%s\t%s", help_status1, cpu.c_str(), mem.c_str(), msg)), 0);
+}
+
+bool BackboardWindow::toggleLog() {
+    return (GetAttribute(log) &= ~VISIBLE);
+}
+
+void BackboardWindow::updateLayout() {
+    int cw = ClientWidth(GetParent(log)), ch = ClientHeight(GetParent(log));
+    int logh = getLogWindowHeight(ch);
+    printf("%d %d %d \n",cw,ch,logh);
+    SendMessage(log, MOVE, 0, ch - logh + TopBorderAdj(GetParent(log)));
+    SendMessage(log, SIZE, cw - 1, ch - 1);
+    for (HWND &w : std::vector<HWND>{info, instruments}) {
+        cw = ClientWidth(GetParent(w)), ch = ClientHeight(GetParent(w));
+        SendMessage(w, MOVE, 0, TopBorderAdj(GetParent(w)));
+        SendMessage(w, SIZE, cw - BorderAdj(w) * 2, isHidden(log) ? ch : ch - logh);
+        SendMessage(w, PAINT, 0, 0);
     }
 }
 
@@ -332,23 +417,46 @@ void BackboardWindow::openSysMessageLog() {
     MessageLog(wnd);
 }
 
-bool BackboardWindow::logMessage(const char* msg) {
+void BackboardWindow::logMessage(const char* msg) {
+    static std::vector<std::string> _queue;
     if (log) {
+        while (!_queue.empty())
+            SendMessage(log, ADDTEXT, PARAM(take(_queue).c_str()), 0);
         SendMessage(log, ADDTEXT, PARAM(msg), 0);
         SendMessage(log, PAINT, 0, 0);
-        return true;
     } else
-        return false;
+        _queue.insert(_queue.begin(), msg);
+}
+
+void BackboardWindow::recordEvent(const char *msg) {
+    static std::vector<std::string> _queue;
+    if (info) {
+        while (!_queue.empty())
+            SendMessage(log, ADDTEXT, PARAM(take(_queue).c_str()), 0);
+        const char *line = f_ssprintf("\x09%s", msg);
+        SendMessage(info, ADDTEXT, PARAM(line), 0);
+        SendMessage(info, PAINT, 0, 0);
+    } else
+        _queue.insert(_queue.begin(), msg);
 }
 
 /* ------- window processing module for application window ----- */
 static int MainAppProc(WINDOW wnd,MESSAGE msg,PARAM p1,PARAM p2)
 {
-    if ( msg == CREATE_WINDOW )
-    {
+    switch (msg) {
+        case CREATE_WINDOW:
+            break;
+        case KEYBOARD:
+            break;
     }
     
     return DefaultWndProc(wnd, msg, p1, p2);
+}
+
+void PrepBackboardFileMenu(void *, struct Menu *) {
+}
+
+void PrepBackboardEditMenu(void *, struct Menu *) {
 }
 
 BackboardWindow::BackboardWindow() {

@@ -1,10 +1,6 @@
 #ifndef SUPPORT_H
 #define SUPPORT_H
 
-#define APP_VERSION       1.05
-#define APP_VERSION_MAJOR 1
-#define APP_VERSION_MINOR 0.05
-
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -14,6 +10,12 @@
 #else
 # define EXTERN_C
 #endif
+
+# define f_ssprintf(...)                                \
+    ({ int _ss_size = snprintf(0, 0, ##__VA_ARGS__);    \
+    char *_ss_ret = (char*)alloca(_ss_size+1);          \
+    snprintf(_ss_ret, _ss_size+1, ##__VA_ARGS__);       \
+    _ss_ret; })
 
 /// Errors and logging
 
@@ -26,13 +28,13 @@ EXTERN_C void hex_dump(FILE *stream, void *mem, int  sz);
 
 /// Memory
 
-EXTERN_C char * strfindreplace(char *str, const char *find, const char *replace);
+EXTERN_C char *strfindreplace(char *str, const char *find, const char *replace);
 EXTERN_C char *strremove(char *str, const char *sub);
 
 /// I/O
 
 EXTERN_C bool exec_cmd(const char *cmd, char *result, int result_size);
-EXTERN_C char* read_file(char* path, int* len);
+EXTERN_C char *read_file(char* path, int* len);
 EXTERN_C char *cat_file(const char *path);
 
 /// Hardware

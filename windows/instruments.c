@@ -2,14 +2,14 @@
 #include "text_ui/textUI.h"
 
 #include "backboard.h"
-#include "instruments.h"
+#include "deskviews.h"
 
 /* ------------ Instruments dialog box -------------- */
 
 DIALOGBOX(graph)
-DB_TITLE("Instruments", 44, 2, kInstrumentsWinH, kInstrumentsWinW)
-CONTROL(LCDBOX,   NULL,   1,   1,  3, kInstrumentsWinW-3, ID_LCDLABEL)
-CONTROL(GRAPHBOX, NULL,   0,   4,  5, kInstrumentsWinW-2, ID_PLOTGRAPH)
+DB_TITLE("Instruments",   0, 0, -1, -1)
+CONTROL(LCDBOX,   NULL,   0, 0,  3, -1, ID_LCDLABEL)
+CONTROL(GRAPHBOX, NULL,   0, 4,  5, -1, ID_PLOTGRAPH)
 ENDDB
 
 int InstrumentsProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
@@ -27,6 +27,8 @@ int InstrumentsProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
             if (ct) {
                 SendMessage(ct, SHOW_WINDOW, 0, 0);
             }
+            break;
+        case SIZE:
             break;
     }
 

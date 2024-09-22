@@ -228,6 +228,12 @@ typedef struct char_info_t {
     };
 } char_info_t;
 
+/* ----------------- xxstr.h ------------------- */
+
+BOOL is_xxstr(const char *);
+size_t xxstrlen(const char *s);
+size_t xxstrncnt(const char *s, int n);
+
 /* ---------------- commands.h ----------------- */
 
 /*
@@ -837,7 +843,7 @@ extern MODULE DFlatpModule;
 /* System color schemes */
 extern ColorScheme color;
 extern ColorScheme bw;
-extern ColorScheme reverse;
+extern ColorScheme rev;
 
 /* Window attributes */
 #define SHADOW 0x0001
@@ -937,6 +943,7 @@ BOOL isDerivedFrom(HWND, CLASS);
 #define BorderAdj(w) (TestAttribute(w, HASBORDER) ? 1 : 0)
 #define BottomBorderAdj(w) (TestAttribute(w, HASSTATUSBAR) ? 1 : BorderAdj(w))
 #define TopBorderAdj(w) ((TestAttribute(w, HASTITLEBAR) && TestAttribute(w, HASMENUBAR)) ? 2 : (TestAttribute(w, HASTITLEBAR | HASMENUBAR | HASBORDER) ? 1 : 0))
+#define ShadowAdj(w) (TestAttribute(w, SHADOW) ? 1 : 0)
 #define ClientWidth(w) (WindowWidth(w) - BorderAdj(w) * 2)
 #define ClientHeight(w) (WindowHeight(w) - TopBorderAdj(w) - BottomBorderAdj(w))
 #define WindowRect(w) ((w)->rc)
@@ -965,6 +972,7 @@ void DisplayTitle(HWND, RECT *);
 #define AddAttribute(w, a) (GetAttribute(w) |= a)
 #define ClearAttribute(w, a) (GetAttribute(w) &= ~(a))
 #define TestAttribute(w, a) (GetAttribute(w) & (a))
+
 #define isHidden(w) (!(GetAttribute(w) & VISIBLE))
 #define SetVisible(w) (GetAttribute(w) |= VISIBLE)
 #define ClearVisible(w) (GetAttribute(w) &= ~VISIBLE)
@@ -1079,6 +1087,7 @@ HWND WatchIcon(void);
 /* /////// DIALOG BOXES  /////////////////////////////// */
 
 BOOL DialogBox(HWND, DBOX *, BOOL, int (*)(struct window *, MESSAGE, PARAM, PARAM));
+HWND DialogWindow(HWND, DBOX *, int (*)(struct window *, MESSAGE, PARAM, PARAM));
 void ClearDialogBoxes(void);
 void GetDlgListText(HWND, char *, UCOMMAND);
 BOOL RadioButtonSetting(DBOX *, UCOMMAND);
@@ -1120,21 +1129,11 @@ BOOL InputBox(HWND, char *, char *, char *, int, int);
 BOOL GenericMessage(HWND, char *, char *, int,
         int (*)(struct window *, MESSAGE, PARAM, PARAM),
         char *, char *, int, int, int);
-#define TestErrorMessage(msg)                           \
-    GenericMessage(NULL, "Error", msg, 2, ErrorBoxProc, \
-            tOk, tCancel, ID_OK, ID_CANCEL, TRUE)
-#define ErrorMessage(msg)                               \
-    GenericMessage(NULL, "Error", msg, 1, ErrorBoxProc, \
-            tOk, NULL, ID_OK, 0, TRUE)
-#define MessageBox(ttl, msg)                          \
-    GenericMessage(NULL, ttl, msg, 1, MessageBoxProc, \
-            tOk, NULL, ID_OK, 0, TRUE)
-#define YesNoBox(msg)                                \
-    GenericMessage(NULL, NULL, msg, 2, YesNoBoxProc, \
-            tYes, tNo, ID_OK, ID_CANCEL, TRUE)
-#define CancelBox(wnd, msg)                               \
-    GenericMessage(wnd, "Wait...", msg, 1, CancelBoxProc, \
-            tCancel, NULL, ID_CANCEL, 0, FALSE)
+#define TestErrorMessage(msg) GenericMessage(NULL, "Error", msg, 2, ErrorBoxProc, tOk, tCancel, ID_OK, ID_CANCEL, TRUE)
+#define ErrorMessage(msg) GenericMessage(NULL, "Error", msg, 1, ErrorBoxProc, tOk, NULL, ID_OK, 0, TRUE)
+#define MessageBox(ttl, msg) GenericMessage(NULL, ttl, msg, 1, MessageBoxProc, tOk, NULL, ID_OK, 0, TRUE)
+#define YesNoBox(msg) GenericMessage(NULL, NULL, msg, 2, YesNoBoxProc, tYes, tNo, ID_OK, ID_CANCEL, TRUE)
+#define CancelBox(wnd, msg) GenericMessage(wnd, "Wait...", msg, 1, CancelBoxProc, tCancel, NULL, ID_CANCEL, 0, FALSE)
 void CloseCancelBox(void);
 HWND MomentaryMessage(char *);
 
@@ -1175,8 +1174,14 @@ void SkipApplicationControls(void);
 extern HWND inFocus;
 extern HWND oldFocus;
 
+/* Non-printable string tokens */
+
+#define FONTSELECTOR 1 /* selected ext. charset */
 #define CHANGECOLOR 19 /* prefix to change colors  (old: 174) */
-#define RESETCOLOR 23 /* reset colors to default  (old: 175) */
+#define RESETCOLOR 23  /* reset colors to default  (old: 175) */
+
+/* Selection marker */
+
 #define LISTSELECTOR 4 /* selected list box entry */
 
 extern char *Clipboard;
@@ -1348,43 +1353,19 @@ void SeekHelpLine(long, int);
 
 RECT subRectangle(RECT, RECT);
 
-/* ----- interrupt vectors ----- */
-#define TIMER 8
-#define VIDEO 0x10
-#define KEYBRD 0x16
-#define DOS 0x21
-#define CTRLBREAK 0x23
-#define CRIT 0x24
-#define MOUSE 0x33
-#define KEYBOARDVECT 9
 /* ------- platform-dependent values ------ */
-#define KEYBOARDPORT 0x60
 #define FREQUENCY 100
 #define COUNT (1193280L / FREQUENCY)
-#define ZEROFLAG 0x40
 #define MAXSAVES 50
 #define SCREENWIDTH (get_console_width())
 #define SCREENHEIGHT (get_console_height())
 
-#define waitforkeyboard() \
-    {}
+#define waitforkeyboard() {}
 #define disable()
 #define enable()
-#define harderr(vect) \
-    {}
-#define hardretn(err) \
-    {}
+#define harderr(vect) {}
+#define hardretn(err) {}
 
-/* ----- keyboard BIOS (0x16) functions -------- */
-#define READKB 0
-#define KBSTAT 1
-/* ------- video BIOS (0x10) functions --------- */
-#define SETCURSORTYPE 1
-#define SETCURSOR 2
-#define READCURSOR 3
-#define READATTRCHAR 8
-#define WRITEATTRCHAR 9
-#define HIDECURSOR 0x20
 /* ---------- keyboard prototypes -------- */
 int AltConvert(int);
 int Xbioskey(int); /* enhanced for 102 key keyboard support */
@@ -1421,14 +1402,10 @@ void resetmouse(void);
 #define waitformouse()     \
     while (mousebuttons()) \
         ;
-#define set_mousetravel(p1, p2, s1, s2) \
-    {}
-#define set_mouseposition(x, y) \
-    {}
-#define show_mousecursor() \
-    {}
-#define hide_mousecursor() \
-    {}
+#define set_mousetravel(p1, p2, s1, s2) {}
+#define set_mouseposition(x, y) {}
+#define show_mousecursor() {}
+#define hide_mousecursor() {}
 
 /* ------------ timer macros -------------- */
 

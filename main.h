@@ -24,10 +24,15 @@ static inline void puts_no_eol(const char* s) {
 #define console_alt_enter() puts_no_eol("\033[?1049h")
 #define console_alt_exit() puts_no_eol("\033[?1049l")
 
+#define console_save() puts_no_eol("\033[?47h")
+#define console_restore() puts_no_eol("\033[?47l")
+
 #define cursor_reset() puts_no_eol("\033[0;0H")
 #define cursor_hide() puts_no_eol("\033[?25l")
 #define cursor_show() puts_no_eol("\033[?25h")
 #define cursor_home() puts_no_eol("\033[H")
+#define cursor_save() puts_no_eol("\0337")
+#define cursor_restore() puts_no_eol("\0338")
 
 /* Low-level frambuffer management */
 

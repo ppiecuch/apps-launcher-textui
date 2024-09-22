@@ -21,6 +21,7 @@
 #endif
 
 #define FIXHELP
+
 #include "textUI.h"
 #include "textUI_support.h"
 
@@ -96,6 +97,37 @@ int _findclose(intptr_t handle);
 /* Matches the regular language accepted by findfirst/findnext. More precisely, * matches zero or more characters and ? matches any
  * characters, but only one. Every other characters match themself. To respect the Windows behavior, *.* matches everything. */
 int match_spec(const char* spec, const char* text);
+
+/* -------------- xxstr.c --------------- */
+
+BOOL is_xxstr(const char *s) {
+    while (*s) {
+        if (*s == RESETCOLOR || *s == CHANGECOLOR || *s == FONTSELECTOR)
+            return TRUE;
+        s++;
+    }
+    return FALSE;
+}
+
+size_t xxstrlen(const char *s) {
+    size_t len = 0;
+    while (*s) {
+        if (*s != RESETCOLOR && *s != CHANGECOLOR && *s != FONTSELECTOR)
+            len++;
+        s++;
+    }
+    return len;
+}
+
+size_t xxstrncnt(const char *s, int n) {
+    size_t cnt = 0;
+    while (*s && n) {
+        if (*s == RESETCOLOR || *s == CHANGECOLOR || *s == FONTSELECTOR)
+            cnt++;
+        s++, n--;
+    }
+    return cnt;
+}
 
 /* ------------- applicat.c ------------- */
 
@@ -181,8 +213,7 @@ static void AppSetFocusMsg(WINDOW wnd, BOOL p1)
 /* ------- SIZE Message -------- */
 static void AppSizeMsg(WINDOW wnd, PARAM p1, PARAM p2)
 {
-    BOOL WasVisible;
-    WasVisible = isVisible(wnd);
+    BOOL WasVisible = isVisible(wnd);
     if (WasVisible)
         SendMessage(wnd, HIDE_WINDOW, 0, 0);
     if (p1-GetLeft(wnd) < 30)
@@ -264,13 +295,12 @@ static void AppCommandMsg(WINDOW wnd, PARAM p1, PARAM p2)
 /* --------- CLOSE_WINDOW Message -------- */
 static int AppCloseWindowMsg(WINDOW wnd)
 {
-    int rtn;
 #ifdef INCLUDE_MULTI_WINDOWS
     CloseAll(wnd, TRUE);
     WindowSel = 0;
 #endif
     PostMessage(NULL, STOP, 0, 0);
-    rtn = BaseWndProc(APPLICATION, wnd, CLOSE_WINDOW, 0, 0);
+    int rtn = BaseWndProc(APPLICATION, wnd, CLOSE_WINDOW, 0, 0);
     if (ScreenHeight != SCREENHEIGHT)
         SetScreenHeight(ScreenHeight);
     ApplicationWindow = NULL;
@@ -461,7 +491,7 @@ void SelectLines(VideoResolution  reqVR)
         SetScreenHeight(reqVR.VRes);
 
         /* ---- re-maximize ---- */
-        if (ApplicationWindow->condition == ISMAXIMIZED)	{
+        if (ApplicationWindow->condition == ISMAXIMIZED) {
            SendMessage(ApplicationWindow, SIZE, (PARAM) GetRight(ApplicationWindow), SCREENHEIGHT-1);
                 return;
             }
@@ -1294,7 +1324,7 @@ void SelectColors( void )
     if (RadioButtonSetting(&Display, ID_MONO))
         SelectColorScheme (bw);
     else if (RadioButtonSetting(&Display, ID_REVERSE))
-        SelectColorScheme (reverse);
+        SelectColorScheme (rev);
     else if (ismono() || video_mode == 2)
         SelectColorScheme (bw);
     else
@@ -1947,15 +1977,32 @@ int DialogProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
     return BaseWndProc(DIALOG, wnd, msg, p1, p2);
 }
 
-/* ------- create and execute a dialog box ---------- */
-BOOL DialogBox(WINDOW wnd, DBOX *db, BOOL Modal,
-  int (*wndproc)(struct window *, MESSAGE, PARAM, PARAM))
+/* ------- create dialog box ---------- */
+WINDOW DialogWindow(WINDOW wnd, DBOX *db, int (*wndproc)(struct window *, MESSAGE, PARAM, PARAM))
 {
     BOOL rtn = FALSE;
     int x = db->dwnd.x, y = db->dwnd.y;
-    WINDOW DialogWnd;
+    WINDOW DialogWnd = CreateWindow(DIALOG,
+                        db->dwnd.title,
+                        x, y,
+                        db->dwnd.h,
+                        db->dwnd.w,
+                        db,
+                        wnd,
+                        wndproc,
+                        0);
+    SendMessage(DialogWnd, SETFOCUS, TRUE, 0);
+    FirstFocus(db);
+    PostMessage(DialogWnd, INITIATE_DIALOG, 0, 0);
+    return DialogWnd;
+}
 
-    DialogWnd = CreateWindow(DIALOG,
+/* ------- create and execute a dialog box ---------- */
+BOOL DialogBox(WINDOW wnd, DBOX *db, BOOL Modal, int (*wndproc)(struct window *, MESSAGE, PARAM, PARAM))
+{
+    BOOL rtn = FALSE;
+    int x = db->dwnd.x, y = db->dwnd.y;
+    WINDOW DialogWnd = CreateWindow(DIALOG,
                         db->dwnd.title,
                         x, y,
                         db->dwnd.h,
@@ -1968,7 +2015,7 @@ BOOL DialogBox(WINDOW wnd, DBOX *db, BOOL Modal,
     DialogWnd->Modal = Modal;
     FirstFocus(db);
     PostMessage(DialogWnd, INITIATE_DIALOG, 0, 0);
-    if (Modal)    {
+    if (Modal) {
         SendMessage(DialogWnd, CAPTURE_MOUSE, 0, 0);
         SendMessage(DialogWnd, CAPTURE_KEYBOARD, 0, 0);
         while (dispatch_message(NULL))
@@ -4549,7 +4596,7 @@ static void SelectHelp(WINDOW wnd, struct helps *newhelp, BOOL recall)
             int x = HelpBox.ctl[i].dwnd.x+GetClientLeft(wnd);
             int y = HelpBox.ctl[i].dwnd.y+GetClientTop(wnd);
             SendMessage(cwnd, MOVE, x, y);
-            if (i == 0)	{
+            if (i == 0) {
                 x += HelpBox.ctl[i].dwnd.w - 1;
                 y += HelpBox.ctl[i].dwnd.h - 1;
                 SendMessage(cwnd, SIZE, x, y);
@@ -5401,8 +5448,7 @@ static BOOL SelectionInWindow(WINDOW wnd, int sel)
     return (wnd->wlines && sel >= wnd->wtop && sel < wnd->wtop+ClientHeight(wnd));
 }
 
-static void WriteSelection(WINDOW wnd, int sel,
-                                    int reverse, RECT *rc)
+static void WriteSelection(WINDOW wnd, int sel, int reverse, RECT *rc)
 {
     if (isVisible(wnd))
         if (SelectionInWindow(wnd, sel))
@@ -5613,7 +5659,7 @@ void AppendWindow(WINDOW wnd)
 {
     if (wnd != NULL)    {
         WINDOW pwnd = GetParent(wnd);
-        if (pwnd != NULL)	{
+        if (pwnd != NULL) {
             if (FirstWindow(pwnd) == NULL)
                 FirstWindow(pwnd) = wnd;
             if (LastWindow(pwnd) != NULL)
@@ -5631,9 +5677,9 @@ void SkipApplicationControls(void)
 {
     BOOL EmptyAppl = FALSE;
     int ct = 0;
-    while (!EmptyAppl && inFocus != NULL)	{
+    while (!EmptyAppl && inFocus != NULL) {
         CLASS cl = GetClass(inFocus);
-        if (cl == MENUBAR || cl == STATUSBAR)	{
+        if (cl == MENUBAR || cl == STATUSBAR) {
             SetPrevFocus();
             EmptyAppl = (cl == MENUBAR && ct++);
         }
@@ -5671,11 +5717,10 @@ DIALOGBOX(dbLog)
     CONTROL(BUTTON,  "  ~Help  ", 29,  13, 1,   8, ID_HELP)
 ENDDB
 
-#if 0
-BOOL LogMessageStart (WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
+BOOL LLogMessageStart (WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
 {
-    if (log != NULL && message[msg][0] != ' ')
-        fprintf(log,
+    if (log_file != NULL && message[msg][0] != ' ')
+        fprintf(log_file,
             "%-20.20s %-12.12s %-20.20s, %5.5ld, %5.5ld\n",
             wnd ? (GetTitle(wnd) ? GetTitle(wnd) : "") : "",
             wnd ? ClassNames[GetClass(wnd)] : "",
@@ -5684,11 +5729,10 @@ BOOL LogMessageStart (WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
 }
 
 
-BOOL LogMessageEnd ( WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2 )
+BOOL LLogMessageEnd ( WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2 )
 {
     return TRUE;
 }
-#endif
 
 static int LogProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
 {
@@ -5697,14 +5741,14 @@ static int LogProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
     switch (msg)    {
         case INITIATE_DIALOG:
             AddAttribute(cwnd, MULTILINE | VSCROLLBAR);
-            while (*mn)    {
+            while (*mn) {
                 SendMessage(cwnd, ADDTEXT, (PARAM) (*mn), 0);
                 mn++;
             }
             SendMessage(cwnd, SHOW_WINDOW, 0, 0);
             break;
         case COMMAND:
-            if ((int) p1 == ID_OK)    {
+            if ((int) p1 == ID_OK) {
                 int item;
                 int tl = GetTextLines(cwnd);
                 for (item = 0; item < tl; item++)
@@ -5722,8 +5766,8 @@ void MessageLog(WINDOW wnd)
 {
     if (DialogBox(wnd, &dbLog, TRUE, LogProc))    {
         if (CheckBoxSetting(&dbLog, ID_LOGGING))    {
-            log_file = fopen("DFLAT.LOG", "wt");
-        } else if (log_file != NULL)    {
+            log_file = fopen("dflatmsg.log", "wt");
+        } else if (log_file != NULL) {
             fclose(log_file);
             log_file = NULL;
         }
@@ -7830,10 +7874,8 @@ static void MaximizeMsg(WINDOW wnd)
     wnd->condition = ISMAXIMIZED;
     wnd->wasCleared = FALSE;
     SendMessage(wnd, HIDE_WINDOW, 0, 0);
-    SendMessage(wnd, MOVE,
-        RectLeft(rc), RectTop(rc));
-    SendMessage(wnd, SIZE,
-        RectRight(rc), RectBottom(rc));
+    SendMessage(wnd, MOVE, RectLeft(rc), RectTop(rc));
+    SendMessage(wnd, SIZE, RectRight(rc), RectBottom(rc));
     if (wnd->restored_attrib == 0)
         wnd->restored_attrib = wnd->attrib;
     ClearAttribute(wnd, SHADOW);
@@ -7855,10 +7897,8 @@ static void MinimizeMsg(WINDOW wnd)
     wnd->condition = ISMINIMIZED;
     wnd->wasCleared = FALSE;
     SendMessage(wnd, HIDE_WINDOW, 0, 0);
-    SendMessage(wnd, MOVE,
-        RectLeft(rc), RectTop(rc));
-    SendMessage(wnd, SIZE,
-        RectRight(rc), RectBottom(rc));
+    SendMessage(wnd, MOVE, RectLeft(rc), RectTop(rc));
+    SendMessage(wnd, SIZE, RectRight(rc), RectBottom(rc));
     if (wnd == inFocus)
         SetNextFocus();
     if (wnd->restored_attrib == 0)
@@ -7883,11 +7923,9 @@ static void RestoreMsg(WINDOW wnd)
     SendMessage(wnd, HIDE_WINDOW, 0, 0);
     wnd->attrib = wnd->restored_attrib;
     wnd->restored_attrib = 0;
-    SendMessage(wnd, MOVE, wnd->RestoredRC.lf,
-        wnd->RestoredRC.tp);
+    SendMessage(wnd, MOVE, wnd->RestoredRC.lf, wnd->RestoredRC.tp);
     wnd->RestoredRC = holdrc;
-    SendMessage(wnd, SIZE, wnd->RestoredRC.rt,
-        wnd->RestoredRC.bt);
+    SendMessage(wnd, SIZE, wnd->RestoredRC.rt, wnd->RestoredRC.bt);
     if (wnd != inFocus)
         SendMessage(wnd, SETFOCUS, TRUE, 0);
     else
@@ -7950,7 +7988,7 @@ static void SizeMsg(WINDOW wnd, PARAM p1, PARAM p2)
     rc = ClientRect(wnd);
 
     cwnd = FirstWindow(wnd);
-    while (cwnd != NULL)	{
+    while (cwnd != NULL) {
         if (cwnd->condition == ISMAXIMIZED)
             SendMessage(cwnd, SIZE, RectRight(rc), RectBottom(rc));
         cwnd = NextWindow(cwnd);
@@ -9812,7 +9850,7 @@ int StatusBarProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
     char *statusbar;
 
     switch (msg)
-        {
+    {
         case CREATE_WINDOW:
             SendMessage(wnd, CAPTURE_CLOCK, 0, 0);
             break;
@@ -9828,35 +9866,47 @@ int StatusBarProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
             statusbar = DFcalloc(1, WindowWidth(wnd)+1);
             memset(statusbar, ' ', WindowWidth(wnd));
             *(statusbar+WindowWidth(wnd)) = '\0';
-            strncpy(statusbar+1, "F1=Help \335", 9); /* 9 */
+
+            int prnt = 9; strncpy(statusbar+1, "F1=Help \335", 9); /* default, 9 chars */
+
+            int time_len = strlen(time_string);
+
             if (wnd->text)
+            {
+                const char *text = strchr(wnd->text, '\t');
+                if (text) { /* overwrite */
+                    prnt = text - wnd->text; strncpy(statusbar+1, wnd->text, prnt);
+                    strncpy(statusbar+prnt+1, " \335", 2); prnt += 1+2-xxstrncnt(statusbar+1, prnt);
+                    text++; /* skip \t */
+                } else
+                    text = wnd->text;
+
+                int text_len = xxstrlen(text);
+                int len = min(text_len, WindowWidth(wnd)-(time_len+prnt+1+1+1) ); /* prnt */
+
+                /* if len < strlen(wnd->text), we cannot display all the text */
+
+                if (len > 3) /* space left for min. 3 char more than time and "F1=Help " and 2 block graphics chars */
                 {
-                int len = min(strlen(wnd->text),
-                    WindowWidth(wnd)-(strlen(time_string)+9+1+1+1) ); /* 9 */
-                    /* if len < strlen(wnd->text), we cannot display all the text */
+                    int off=(WindowWidth(wnd)-(time_len+len+1+1) );
 
-                if (len > 3) /* space left for min. 3 char more than time */
-                             /* and "F1=Help " and 2 block graphics chars */
+                    /* right-aligned, next to time display */
+
+                    if (len < text_len)
                     {
-                    int off=(WindowWidth(wnd)-
-                      (strlen(time_string)+len+1+1) );
-                      /* right-aligned, next to time display */
-                    if (len < strlen(wnd->text))
-                        {
-                        strncpy(statusbar+off, wnd->text, len-3);
+                        strncpy(statusbar+off, text, len-3);
                         strncpy(statusbar+off+len-3, "...", 3);
-                        }
+                    }
                     else
-                        strncpy(statusbar+off, wnd->text, len);
-                    } /* could display anything */
+                        strncpy(statusbar+off, text, len);
+                } /* could display anything */
+            }
 
-                }
-
-            strncpy(statusbar+WindowWidth(wnd)-(strlen(time_string)+2),"\263 ", 2);
+            strncpy(statusbar+WindowWidth(wnd)-(time_len+2),"\263 ", 2);
             if (wnd->TimePosted)
-                *(statusbar+WindowWidth(wnd)-strlen(time_string)) = '\0';
+                *(statusbar+WindowWidth(wnd)-time_len) = '\0';
             else
-                strncpy(statusbar+WindowWidth(wnd)-strlen(time_string),time_string, strlen(time_string));
+                strncpy(statusbar+WindowWidth(wnd)-time_len,time_string, time_len);
 
             SetStandardColor(wnd);
             PutWindowLine(wnd, statusbar, 0, 0);
@@ -9875,7 +9925,7 @@ int StatusBarProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
             break;
         default:
             break;
-        }
+    }
 
     return BaseWndProc(STATUSBAR, wnd, msg, p1, p2);
 
@@ -10522,7 +10572,7 @@ ColorScheme bw = {
 }};
 
 /* ----- default colors for reverse mono video ----- */
-ColorScheme reverse = {
+ColorScheme rev = {
     TRUE, 2,{
     /* ------------ NORMAL ------------ */
    {{BLACK, LIGHTGRAY}, /* STD_COLOR    */
@@ -11721,17 +11771,16 @@ static void _wputs(WINDOW wnd, const char *s, const char *end, int x, int y)
         con_char_t ln[200];
         con_char_t *cp1=ln;
         int fg=foreground, bg=background;
-        int len, off=0;
+        int len, off=0, font=0;
         const char *str=s;
 
         while (*str && str != end)
         {
             if (*str == CHANGECOLOR)
             {
-                int fgcode, bgcode; /* new 0.7c: sanity checks */
-                str++;
-                fgcode = (*str++);
-                bgcode = (*str++);
+                str++; /* new 0.7c: sanity checks */
+                int fgcode = (*str++);
+                int bgcode = (*str++);
                 if ((fgcode & 0x80) && (bgcode & 0x80) &&
                     !(fgcode & 0x70) && !(bgcode & 0x70)) {
                     foreground = fgcode & 0x7f;
@@ -11752,21 +11801,26 @@ static void _wputs(WINDOW wnd, const char *s, const char *end, int x, int y)
                 continue;
             }
 
+            if (*str == FONTSELECTOR)
+            {
+                font = (*str++);
+                continue;
+            }
+
 #ifdef TAB_TOGGLING /* made consistent with editor.c - 0.7c */
             if (*str == ('\t' | 0x80) || *str == ('\f' | 0x80))
                 *cp1 = ' ' | (clr(foreground, background) << 8);
             else
 #endif
-                *cp1 = (*str & 255) | (clr(foreground, background) << 8);
+                *cp1 = (*str & 255) | (clr(foreground, background) << 8) | (font << 16);
 
             if (ClipString)
                 if (!CharInView(wnd, x, y))
                     *cp1 = vpeek(video_address, vad(x2,y1));
 
-            cp1++;
-            str++;
-            x++;
-            x2++;
+            font = 0;
+            cp1++, str++;
+            x++, x2++;
         }
 
         foreground = fg;
@@ -11990,11 +12044,12 @@ WINDOW CreateWindow(
     if (wnd != NULL)    {
         int base;
         memset(wnd, 0, sizeof(struct window));	/* new 0.7c */
+        wnd->attrib = attrib; /* need this for ClientXX */
         /* ----- height, width = -1: fill the screen ------- */
         if (height == -1)
-            height = SCREENHEIGHT;
+            height = parent ? ClientHeight(parent) : SCREENHEIGHT;
         if (width == -1)
-            width = SCREENWIDTH;
+            width = parent ? ClientWidth(parent) : SCREENWIDTH;
         /* ----- coordinates -1, -1 = center the window ---- */
         if (left == -1)
             wnd->rc.lf = (SCREENWIDTH-width)/2;
@@ -12004,7 +12059,6 @@ WINDOW CreateWindow(
             wnd->rc.tp = (SCREENHEIGHT-height)/2;
         else
             wnd->rc.tp = top;
-        wnd->attrib = attrib;
         if (ttl != NULL)
             if (*ttl != '\0')
                 AddAttribute(wnd, HASTITLEBAR);
@@ -12018,7 +12072,7 @@ WINDOW CreateWindow(
             AddAttribute(wnd, classdefs[base].attrib);
             base = classdefs[base].base;
         }
-        if (parent)	{
+        if (parent) {
             if (!TestAttribute(wnd, NOCLIP))    {
                 /* -- keep upper left within borders of parent - */
                 wnd->rc.lf = max(wnd->rc.lf,GetClientLeft(parent));
@@ -12088,28 +12142,24 @@ RECT AdjustRectangle(WINDOW wnd, RECT rc)
     if (TestAttribute(wnd, HASBORDER))    {
         if (RectLeft(rc) == 0)
             --rc.rt;
-        else if (RectLeft(rc) < RectRight(rc) &&
-                RectLeft(rc) < WindowWidth(wnd)+1)
+        else if (RectLeft(rc) < RectRight(rc) && RectLeft(rc) < WindowWidth(wnd)+1)
             --rc.lf;
     }
     if (TestAttribute(wnd, HASBORDER | HASTITLEBAR))    {
         if (RectTop(rc) == 0)
             --rc.bt;
-        else if (RectTop(rc) < RectBottom(rc) &&
-                RectTop(rc) < WindowHeight(wnd)+1)
+        else if (RectTop(rc) < RectBottom(rc) && RectTop(rc) < WindowHeight(wnd)+1)
             --rc.tp;
     }
-    RectRight(rc) = max(RectLeft(rc),
-                        min(RectRight(rc),WindowWidth(wnd)));
-    RectBottom(rc) = max(RectTop(rc),
-                        min(RectBottom(rc),WindowHeight(wnd)));
+    RectRight(rc) = max(RectLeft(rc), min(RectRight(rc),WindowWidth(wnd)));
+    RectBottom(rc) = max(RectTop(rc), min(RectBottom(rc),WindowHeight(wnd)));
     return rc;
 }
 
 /* -------- display a window's title --------- */
 void DisplayTitle(WINDOW wnd, RECT *rcc)
 {
-    if (GetTitle(wnd) != NULL)	{
+    if (GetTitle(wnd) != NULL) {
         int tlen = min(strlen(GetTitle(wnd)), WindowWidth(wnd)-2);
         int tend = WindowWidth(wnd)-3-BorderAdj(wnd);
         RECT rc;
@@ -12235,7 +12285,7 @@ static RECT ParamRect(WINDOW wnd, RECT *rcc)
     RECT rc;
     if (rcc == NULL)    {
         rc = RelativeWindowRect(wnd, WindowRect(wnd));
-        if (TestAttribute(wnd, SHADOW))    {
+        if (TestAttribute(wnd, SHADOW)) {
             rc.rt++;
             rc.bt++;
         }
@@ -12262,7 +12312,6 @@ static unsigned int SeCorner(WINDOW wnd, unsigned int stdse)
 /* ------- display a window's border ----- */
 void RepaintBorder(WINDOW wnd, RECT *rcc)
 {
-    int y;
     unsigned int lin, side, ne, nw, se, sw;
     RECT rc, clrc;
 
@@ -12309,7 +12358,7 @@ void RepaintBorder(WINDOW wnd, RECT *rcc)
     }
 
     /* ----------- window body ------------ */
-    for (y = RectTop(rc); y <= RectBottom(rc); y++)    {
+    for (int y = RectTop(rc); y <= RectBottom(rc); y++)    {
         int ch;
         if (y == 0 || y >= WindowHeight(wnd)-1)
             continue;
@@ -12332,8 +12381,7 @@ void RepaintBorder(WINDOW wnd, RECT *rcc)
             shadow_char(wnd, y);
     }
 
-    if (RectTop(rc) <= WindowHeight(wnd)-1 &&
-            RectBottom(rc) >= WindowHeight(wnd)-1)    {
+    if (RectTop(rc) <= WindowHeight(wnd)-1 && RectBottom(rc) >= WindowHeight(wnd)-1)    {
         /* -------- bottom frame corners ---------- */
         if (RectLeft(rc) == 0)
             wputch(wnd, sw, 0, WindowHeight(wnd)-1);
@@ -12342,7 +12390,7 @@ void RepaintBorder(WINDOW wnd, RECT *rcc)
             wputch(wnd, se, WindowWidth(wnd)-1,
                 WindowHeight(wnd)-1);
 
-        if (wnd->StatusBar == NULL)	{
+        if (wnd->StatusBar == NULL) {
             /* ----------- bottom line ------------- */
             memset(line,lin,WindowWidth(wnd)-1);
             if (TestAttribute(wnd, HSCROLLBAR))    {
@@ -12966,15 +13014,15 @@ void append_array(float points[], float n, int length) {
     points[i] = n;
 }
 
-int print_sparkline_at(WINDOW wnd, const char *label, float points[], int length, float avg, bool quiet, bool haveavg, int xpos, int ypos) {
+int print_sparkline_at(WINDOW wnd, const char *label, float points[], int length, float samples[], int size, float avg, bool quiet, bool haveavg, int xpos, int ypos) {
     float max = points[0];
     float min = points[0];
 
-    for(int i=1; i<length; i++) {
-        if (points[i] > max)
-            max = points[i];
-        else if (points[i] < min)
-            min = points[i];
+    for(int i=1; i<size; i++) {
+        if (samples[i] > max)
+            max = samples[i];
+        else if (samples[i] < min)
+            min = samples[i];
     }
 
     PutWindowLine(wnd, label, xpos, ypos); xpos += strlen(label);
@@ -13008,10 +13056,10 @@ int print_sparkline_at(WINDOW wnd, const char *label, float points[], int length
 
 int GraphBoxProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
 {
-#define SPARKLINE_SIZE 12
-#define LABEL_MAX_SIZE 64
-#define GRAPHS_CAPACITY 32
-#define SAMPLES_CAPACITY 200
+#define SPARKLINE_SIZE 12 // sparkline characters size
+#define LABEL_MAX_SIZE 64 // label of graph max. size
+#define GRAPHS_CAPACITY 32 // max graphs
+#define SAMPLES_CAPACITY 300 // 10 secs of 30fps
 
     struct graph_t {
         int id;
@@ -13102,7 +13150,7 @@ int GraphBoxProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
                         if (index > -1) {
                             struct graph_t *graph = ginfo->_graphs[index];
                             if (graph) {
-                                int printed = print_sparkline_at(wnd, graph->label, graph->samples + (SAMPLES_CAPACITY - SPARKLINE_SIZE), SPARKLINE_SIZE, graph->avg, graph->quiet, graph->haveavg, 0, ypos);
+                                int printed = print_sparkline_at(wnd, graph->label, graph->samples + (SAMPLES_CAPACITY - SPARKLINE_SIZE), SPARKLINE_SIZE, graph->samples, SAMPLES_CAPACITY, graph->avg, graph->quiet, graph->haveavg, 0, ypos);
                                 PadWindowLine(wnd, printed, ypos++, ' ');
                             }
                         }

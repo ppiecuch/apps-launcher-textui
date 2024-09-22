@@ -1276,11 +1276,10 @@ int main(int argc, char **argv) {
 
     atexit(cleanup);
 
-    BackboardWindow app;
-    app.resize(); // ready
+    backboard.resize(); // ready
 
-    while(not app.quit() && running) {
-        app.update();
+    while(not backboard.quit() && running) {
+        backboard.update();
     }
 
     if (!freopen("CON", "w", stdout))
