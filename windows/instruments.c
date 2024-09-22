@@ -15,9 +15,10 @@ ENDDB
 int InstrumentsProc(WINDOW wnd, MESSAGE msg, PARAM p1, PARAM p2)
 {
     WINDOW ct;
+    DBOX *db;
     switch (msg) {
         case INITIATE_DIALOG:
-            DBOX *db = (DBOX*)wnd->extension;
+            db = (DBOX*)wnd->extension;
             ct = ControlWindow(db, ID_LCDLABEL);
             if (ct) {
                 SendMessage(ct, SETTEXT, (PARAM)"00 00 00 00", 0);
